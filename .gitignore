@@ -1,0 +1,8 @@
+#Git Ignore File to prevent us from uploading local only files
+#such as .db files and .log files
+
+#Ignoring db files
+*.db
+
+#Ignoring .log files
+*.log
