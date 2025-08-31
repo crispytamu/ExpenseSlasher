@@ -6,3 +6,6 @@
 
 #Ignoring .log files
 *.log
+
+#Ignoring other files
+*.pdf
