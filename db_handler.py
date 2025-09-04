@@ -6,9 +6,7 @@ import os #os for automated DB clearing during debug
 
 #Global Vars
 DB = None #DB variable
-CURSOR_TRANS = None #Transaction DB Cursor variable
-CURSOR_TAGS = None #Tags DB Cursor variable
-CURSOR = None #Transaction_Tags DB Cursor variable
+CURSOR = None #DB Cursor variable
 
 
 def db_init(db_name: str = "data.db"):
@@ -19,81 +17,112 @@ def db_init(db_name: str = "data.db"):
     Args:
         db_name (str, optional): File name for database; Defaults to "data.db".
     """
+    
+    #Building global variables
     global DB
     global CURSOR
     DB = sqlite3.connect(db_name)
     CURSOR = DB.cursor()
     
+    #building db tables
     try:
+        #transaction table
         CURSOR.execute("""
             CREATE TABLE transactions (
-                id INTEGER PRIMARY KEY,
                 date TEXT,
-                descrip TEXT,
+                desc TEXT,
                 amnt REAL
             );
         """)
         
+        #tag table
         CURSOR.execute("""
             CREATE TABLE tags (
-                id INTEGER PRIMARY KEY,
                 name TEXT UNIQUE
             );
         """)
         
+        #transaction_tag joint table
         CURSOR.execute("""
             CREATE TABLE transactions_tags (
                 transaction_id INTEGER NOT NULL, 
                 tag_id INTEGER NOT NULL, 
-                FOREIGN KEY (transaction_id) REFERENCES transactions(id),
-                FOREIGN KEY (tag_id) REFERENCES tags (id)
+                FOREIGN KEY (transaction_id) REFERENCES transactions(ROWID),
+                FOREIGN KEY (tag_id) REFERENCES tags (ROWID)
                 UNIQUE (transaction_id, tag_id)
             );
         """)
     except sqlite3.OperationalError as e:
         print("Error Creating Tables...")
         print(e)
+    finally:
+        DB.commit()
     
 def _db_testFetch ():
     fetch = []
     for row in CURSOR.execute("""
-            SELECT date, descrip, amnt 
+            SELECT date, desc, amnt 
             FROM transactions 
             ORDER BY date
     """):
         fetch.append(row)
     print(fetch)
 
-def _db_testAdd ():
-    CURSOR.execute("""
-        INSERT INTO transactions VALUES
-            (1,'2000-01-01','McDonalds', 13.75),
-            (2,'2000-01-02','Exxon Gas Station', 25.00),
-            (3,'2000-01-15','Target Supercenter', 81.66)
-    """)
-    DB.commit()
+def db_add_transaction (date: str, desc: str, amnt: float, tags:list[str]) -> bool:
+    """Database function to add a single transaction to the database
 
-def _db_testEdit():
-    pass
+    Args:
+        date (str): Date of transaction in format YYYY-MM-DD
+        desc (str): Description of transaction
+        amnt (float): Ammount for transaction, where debits are positive and
+        credits are negative. i.e: Buying - (2.00), Refunding - (-2.00)
+        tags (list[str]): Array of strings containing tags for sorting
 
-def _db_testRemove():
-    pass
+    Returns:
+        bool: Returns True/False based on successful database entry
+    """    
+    try:
+        #insert to transaction table
+        entryData = (date,desc,amnt)
+        CURSOR.execute("""
+            INSERT INTO transactions (date,desc,amnt)
+            VALUES (?,?,?)
+        """, entryData)
+        trans_id = CURSOR.lastrowid
+        
+        #insert to tags table
+        for tag in tags:
+            #see if tag exists in tag table
+            CURSOR.execute("SELECT ROWID FROM tags WHERE name = ?", (tag,))
+            tagSearchRes = CURSOR.fetchone()
 
-def _db_sortByDate(e: str) -> int:
-    arr = e[0].split('/')
-    sum = 0
-    for val in arr:
-        sum += int(val)
-    return sum
+            if tagSearchRes: #if tag exists
+                tag_id = tagSearchRes[0] #set tag_id to that id
+            else:#else, insert new entry to tag table and get tag id
+                CURSOR.execute("INSERT INTO tags (name) VALUES (?)", (tag,))
+                tag_id = CURSOR.lastrowid
+            
+            #insert to trans_tags table
+            CURSOR.execute("""
+                INSERT INTO transactions_tags (transaction_id,tag_id)
+                VALUES (?,?)
+            """, (trans_id,tag_id))
+        DB.commit()
+    except sqlite3.Error as e:
+        print("Error writting entry: ",e)
+        DB.rollback()
+        return False
+    return True
+
     
 def _db_debug():
-    try:
-        open("debug.db","r")
-        os.system("del debug.db")
-    except FileNotFoundError:
-        pass
+    if os.path.exists("debug.db"):
+        os.remove("debug.db")
+    
     db_init("debug.db")
-    _db_testAdd()
+    db_add_transaction("2000-01-05","McDonalds",12.99,["Fast Food"])
+    db_add_transaction("2000-03-19","HEB",249.99,["Groceries","Extra"])
+    db_add_transaction("2001-09-13","Taco Bell", 11.46,["Fast Food"])
     _db_testFetch()
 
 
