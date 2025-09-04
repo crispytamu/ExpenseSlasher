@@ -58,7 +58,13 @@ def db_init(db_name: str = "data.db"):
     finally:
         DB.commit()
     
-def _db_testFetch ():
+def db_fetch_all_tagless () -> list[tuple[str,str,float]]:
+    """Fetches all transactions in transaction table and retuns list of tuples
+    representing each transaction WITHOUT tags
+
+    Returns:
+        list[tuple[str,str,float]]: list of tuples representing transactions
+    """    
     fetch = []
     for row in CURSOR.execute("""
             SELECT date, desc, amnt 
@@ -66,7 +72,7 @@ def _db_testFetch ():
             ORDER BY date
     """):
         fetch.append(row)
-    print(fetch)
+    return fetch
 
 def db_add_transaction (date: str, desc: str, amnt: float, tags:list[str]) -> bool:
     """Database function to add a single transaction to the database
@@ -123,7 +129,7 @@ def _db_debug():
     db_add_transaction("2000-01-05","McDonalds",12.99,["Fast Food"])
     db_add_transaction("2000-03-19","HEB",249.99,["Groceries","Extra"])
     db_add_transaction("2001-09-13","Taco Bell", 11.46,["Fast Food"])
-    _db_testFetch()
+    print(db_fetch_all_tagless())
 
 
 
