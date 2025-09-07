@@ -127,7 +127,23 @@ def menu():
         elif choice == "4":
             txns = load_transactions()
             print(f"Net Value :${net_value(txns):.2f}")
-
+        
+        elif choice == "5":         #Add Modifications
+            txns = load_transactions()
+            list_transactions_print(txns)
+            if not txns:
+                continue
+            try:
+                idx = int(input("Enter the index to remove: ").strip())
+            except ValueError:
+                print("Index must be a number.")
+                continue
+            ok, info = remove_transaction_by_index(idx)
+            if ok:
+                print(f"Removed: {info}")
+            else:
+                total = info
+                print(f"Invalid index. Must be between 0 and {total-1}.")
         elif choice == "0":
             print("Goodbye!")
             break
