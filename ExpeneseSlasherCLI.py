@@ -59,7 +59,6 @@ def save_transactions(transactions):
                 "amount": t["amount"],
                 "type": t["type"]
             })
-
 # Calculation Functions
 
 
