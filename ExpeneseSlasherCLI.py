@@ -40,6 +40,20 @@ def load_transactions():
         reader = csv.DictReader(f)
         return list(reader)
 
+#This is used after removing --new
+def save_transactions(transactions):
+    ensure_file()
+    with open(CSV_FILE, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=FIELDS)
+        writer.writeheader()
+        for t in transactions:
+            writer.writerow({
+                "date": t["date"],
+                "description": t["description"],
+                "category": t["category"],
+                "amount": t["amount"],
+                "type": t["type"]
+            })
 #Calculation Functions
 def total_income(transactions):
     return sum(float(t["amount"]) for t in transactions if t["type"] == "income")
