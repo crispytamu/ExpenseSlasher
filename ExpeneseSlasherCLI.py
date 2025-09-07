@@ -61,6 +61,7 @@ def menu():
         print("1) Add transaction")
         print("2) Show all transactions")
         print("3) Show summary")
+        print("4) Show net value")      #Curtis
         print("0) Exit")
 
         choice = input("Choose: ").strip()
@@ -87,6 +88,10 @@ def menu():
             print(f"Total Income : ${total_income(txns):.2f}")
             print(f"Total Expense: ${total_expenses(txns):.2f}")
             print(f"Net Savings  : ${net_savings(txns):.2f}")
+        
+        elif choice == "4":
+            txns = load_transactions()
+            print(f"Net Value :${net_value(txns):.2f}")
 
         elif choice == "0":
             print("Goodbye!")
