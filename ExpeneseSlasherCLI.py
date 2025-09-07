@@ -62,6 +62,7 @@ def menu():
         print("2) Show all transactions")
         print("3) Show summary")
         print("4) Show net value")      #Curtis
+        print("5) Remove a transaction")    #Pablo Adding
         print("0) Exit")
 
         choice = input("Choose: ").strip()
