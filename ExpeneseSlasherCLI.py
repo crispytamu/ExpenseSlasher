@@ -54,6 +54,7 @@ def save_transactions(transactions):
                 "amount": t["amount"],
                 "type": t["type"]
             })
+
 #Calculation Functions
 def total_income(transactions):
     return sum(float(t["amount"]) for t in transactions if t["type"] == "income")
@@ -67,6 +68,25 @@ def net_savings(transactions):
 ###<-- Adding this helper
 def net_value(transactions):
     return net_savings(transactions)
+
+#List with index for remove flow "Curtis and Pablo"
+def list_transactions_print(transactions):
+    if not transactions:
+        print("(no transactions found)")
+        return
+    print("\n# | date       | description                | category       | amount   | type")
+    print("--+------------+----------------------------+----------------+----------+----------")
+    for i, t in enumerate(transactions):
+        print(f"{i:2d}| {t['date']:<10} | {t['description'][:26]:<26} | {t['category'][:14]:<14} | {t['amount']:<8} | {t['type']}")
+
+#NEW remove by index (shown on list) "Curtis and Pablo"
+def remove_transaction_by_index(index):
+    txns = load_transactions()
+    if index < 0 or index >= len(txns):
+        return False, len(txns)
+    removed = txns.pop(index)
+    save_transactions(txns)
+    return True, removed
 
 #For CLI
 def menu():
