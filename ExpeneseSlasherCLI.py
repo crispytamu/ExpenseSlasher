@@ -50,6 +50,10 @@ def total_expenses(transactions):
 def net_savings(transactions):
     return total_income(transactions) - total_expenses(transactions)
 
+###<-- Adding this helper
+def net_value(transactions):
+    return net_savings(transactions)
+
 #For CLI
 def menu():
     while True:
