@@ -59,6 +59,7 @@ def save_transactions(transactions):
                 "amount": t["amount"],
                 "type": t["type"]
             })
+
 # Calculation Functions
 
 
@@ -103,6 +104,37 @@ def remove_transaction_by_index(index):
     save_transactions(txns)
     return True, removed
 
+# NEW: Edit transaction by index
+
+
+def edit_transaction_by_index(index, date=None, description=None, category=None, amount=None, ttype=None):
+    txns = load_transactions()
+    if index < 0 or index >= len(txns):
+        return False, len(txns)
+
+    tx = txns[index]
+
+    if date is not None and date != "":
+        tx["date"] = date
+
+    if description is not None and description != "":
+        tx["description"] = description
+
+    if category is not None and category != "":
+        tx["category"] = category
+
+    if amount is not None and amount != "":
+        try:
+            tx["amount"] = float(amount)
+        except ValueError:
+            return False, "Amount must be numeric."
+
+    if ttype is not None and ttype != "":
+        tx["type"] = ttype.lower()
+
+    save_transactions(txns)
+    return True, tx
+
 # For CLI
 
 
@@ -114,6 +146,7 @@ def menu():
         print("3) Show summary")
         print("4) Show net value")  # Curtis
         print("5) Remove a transaction")  # Pablo Adding
+        print("6) Edit a transaction")
         print("0) Exit")
 
         choice = input("Choose: ").strip()
@@ -162,6 +195,60 @@ def menu():
             else:
                 total = info
                 print(f"Invalid index. Must be between 0 and {total-1}.")
+
+        elif choice == "6":  # NEW: Edit flow
+            txns = load_transactions()
+            list_transactions_print(txns)
+            if not txns:
+                continue
+            try:
+                idx = int(input("Enter the index to edit: ").strip())
+            except ValueError:
+                print("Index must be a number.")
+                continue
+
+            if idx < 0 or idx >= len(txns):
+                print(f"Invalid index. Must be between 0 and {len(txns)-1}.")
+                continue
+
+            current = txns[idx]
+
+            # Prompt new values (blank = keep existing)
+            new_date = input(
+                f"New date (YYYY-MM-DD) [{current['date']}]: ").strip()
+            new_desc = input(
+                f"New description [{current['description']}]: ").strip()
+            new_cat = input(f"New category [{current['category']}]: ").strip()
+
+            # Amount with validation loop
+            while True:
+                new_amt = input(f"New amount [{current['amount']}]: ").strip()
+                if new_amt == "":
+                    break
+                try:
+                    float(new_amt)
+                    break
+                except ValueError:
+                    print("Amount must be numeric.")
+
+            new_type = input(
+                f"New type (income/expense) [{current['type']}]: ").strip()
+
+            ok, info = edit_transaction_by_index(
+                idx,
+                date=new_date or None,
+                description=new_desc or None,
+                category=new_cat or None,
+                amount=new_amt or None,
+                ttype=new_type or None
+            )
+            if ok:
+                print(f"Updated: {info}")
+            else:
+                if isinstance(info, int):
+                    print(f"Invalid index. Must be between 0 and {info-1}.")
+                else:
+                    print(info)  # error string (e.g., amount not numeric)
 
         elif choice == "0":
             print("Goodbye!")
