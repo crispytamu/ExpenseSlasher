@@ -1,3 +1,12 @@
+# PROGRAM:
+# PURPOSE:
+# INPUT:
+# PROCESS:
+# OUTPUT:
+# HONOR CODE: On my honor, as an Aggie, I have neither given nor received unauthorized
+# aid on this academic work.
+
+
 #!/usr/bin/env python3
 """
 Expense Slasher Core Functionality
