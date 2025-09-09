@@ -57,7 +57,33 @@ def db_init(db_name: str = "data.db"):
         print(e)
     finally:
         DB.commit()
-    
+
+def db_fetch_all () -> list[tuple[int,str,str,float,list[str]]]:
+    fetch = []
+    """
+        First we grab all the cols in transaction table and a col which lists
+        all the Tag names in a list related to a single transaction
+        
+        then we merge the joint table to the trans table, using the
+        transaction ids as the common id
+        
+        we then add the tags table to the joint table, using the tag ids as the
+        common id
+        
+        finally, grouping the entries by rowid will allow the group concat to
+        merge duplicate transaction records' tags into a single entry with a
+        list of its matching tags and outputs that single transaction record
+    """
+    CURSOR.execute("""
+        SELECT T.ROWID, T.date, T.desc, T.amnt, GROUP_CONCAT(Tag.name) as tags
+        FROM transactions as T
+        LEFT JOIN transactions_tags as JT on T.ROWID = JT.transaction_id
+        LEFT JOIN tags as Tag On JT.tag_id = Tag.ROWID
+        GROUP BY T.ROWID
+        """)
+    fetch = CURSOR.fetchall()
+    return fetch
+  
 def db_fetch_all_tagless () -> list[tuple[str,str,float]]:
     """Fetches all transactions in transaction table and retuns list of tuples
     representing each transaction WITHOUT tags
@@ -129,7 +155,8 @@ def _db_debug():
     db_add_transaction("2000-01-05","McDonalds",12.99,["Fast Food"])
     db_add_transaction("2000-03-19","HEB",249.99,["Groceries","Extra"])
     db_add_transaction("2001-09-13","Taco Bell", 11.46,["Fast Food"])
-    print(db_fetch_all_tagless())
+    #print(db_fetch_all_tagless())
+    print(db_fetch_all())
 
 
 
