@@ -9,6 +9,9 @@ Requirements:
 • Functions to calculate total income, total expenses, and net savings
 """
 
+#CSV Library for storage
+#OS to check if file exists where ran
+#Date time to handle dates for transactions
 import csv
 import os
 from datetime import datetime
@@ -16,6 +19,8 @@ from datetime import datetime
 CSV_FILE = "transactions.csv"
 FIELDS = ["date", "description", "category", "amount", "type"]
 
+
+#Function checks if file exists, if not creates it
 def ensure_file():
     if not os.path.exists(CSV_FILE):
         with open(CSV_FILE, "w", newline="") as f:
@@ -50,7 +55,7 @@ def total_expenses(transactions):
 def net_savings(transactions):
     return total_income(transactions) - total_expenses(transactions)
 
-#For CLI
+#Command line menu
 def menu():
     while True:
         print("\n=== Exspense Slasher Core ===")
@@ -73,11 +78,13 @@ def menu():
             except ValueError:
                 print("Amount must be numeric.")
 
+#Shows transactions, prints each row as a dictionary
         elif choice == "2":
             txns = load_transactions()
             for t in txns:
                 print(t)
 
+#Show Summary
         elif choice == "3":
             txns = load_transactions()
             print(f"Total Income : ${total_income(txns):.2f}")
