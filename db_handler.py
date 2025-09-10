@@ -146,19 +146,48 @@ def db_add_transaction (date: str, desc: str, amnt: float, tags:list[str]) -> bo
         return False
     return True
 
-def db_fetch_set (date:str = None, desc: str = None, amnt: float = None, tags:list[str] = None) -> list[tuple[str,str,str,float,str]]:
+def db_fetch_set (date:str = None,
+                  desc: str = None,
+                  amnt: tuple[str,float]|float = None,
+                  tags:list[str] = None) -> list[tuple[str,str,str,float,str]]:
+    """DB lookup method for a subset of records based on search critera
+
+    Args:
+        date (str, optional): date in YYYY-MM-DD format. Defaults to None.
+        desc (str, optional): Description of charge, SQLite 3 attempts autofill.
+                              Defaults to None.
+        amnt (tuple[str,float] | float, optional): Exact value or above/below.
+            For Exact: pass float for exact amnt searching for
+            For Range: pass tuple[str,float] where str is +/> or -/<
+                       results are inclusive
+            Defaults to None.
+        tags (list[str], optional): List of tags as strings. Defaults to None.
+
+    Returns:
+        list[tuple[str,str,str,float,str]]: list of records that match search
+            criteria as tuples with following data:
+            str: Transaction ID
+            str: Date
+            str: Description
+            float: ammount (+ is debit, - is credit)
+            str: string of tags seperated by ','
+    """
+    
+    #Base query
     query = """
         SELECT 
             T.ROWID, T.date, T.desc, T.amnt, GROUP_CONCAT(Tag.name) as tags
         FROM
             transactions AS T
-        JOIN
+        LEFT JOIN
             transactions_tags AS JT ON T.ROWID = JT.transaction_id
-        JOIN
+        LEFT JOIN
             tags AS Tag ON JT.tag_id = Tag.ROWID
         WHERE 1=1
         """
     params = []
+    
+    #dynamically appending to query if search criteria exists
     if date is not None:
         query += " AND T.date = ?"
         params.append(date)
@@ -166,8 +195,18 @@ def db_fetch_set (date:str = None, desc: str = None, amnt: float = None, tags:li
         query += " and T.desc LIKE ?"
         params.append(f"%{desc}%")
     if amnt is not None:
-        query += " and amnt = ?"
-        params.append(amnt)
+        #checks if single float or tuple for range
+        if type(amnt) == float:
+            query += " and amnt = ?"
+            params.append(amnt)
+        else:
+            if amnt[0] == '-' or amnt[0] == '<':
+                query += " and amnt <= ?"
+            elif amnt[0] == '+' or amnt[0] == '>':
+                query += " and amnt >= ?"
+            else: #invalid tuple symbol results in exact search
+                query += " and amnt = ?"
+            params.append(amnt[1])
     if tags:
         tmp = ','.join(['?'] * len(tags))
         query += f" AND Tag.name IN ({tmp})"
@@ -201,10 +240,13 @@ def _db_debug():
     db_add_transaction("2000-05-15", "Movie Theater", 32.75, ["Entertainment", "Date Night"])
     db_add_transaction("2000-06-25", "Whole Foods", 75.00, ["Groceries"])
     db_add_transaction("2000-07-30", "Netflix", 16.99, ["Subscription", "Entertainment"])
-    db_add_transaction("2001-01-01", "New Year's Eve Party", 100.00, ["Entertainment", "Holiday", "Drinks"])
+    db_add_transaction("2001-01-01", "ZeroTag1", 100.00, [])
+    db_add_transaction("2001-01-01", "ZeroTag2", 100.00, [])
+    db_add_transaction("2001-01-01", "ZeroTag3", 100.00, [])
+    db_add_transaction("2001-01-01", "ZeroTag4", 100.00, [])
     #print(db_fetch_all_tagless())
     #_db_debug_print(db_fetch_all())
-    _db_debug_print(db_fetch_set(None,None,None,["Entertainment"]))
+    _db_debug_print(db_fetch_set(None,None,None,None))
 
 
 
