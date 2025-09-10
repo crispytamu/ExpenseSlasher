@@ -423,6 +423,22 @@ def db_bulk_add_tag (transaction_list: list[int] = None, tags: list[str] = None)
             false on at least one failed add, empty id or tag list, or db error
     """
     #TODO
+    pass
+
+def db_bulk_delete_tag (transaction_list: list[int] = None, tags: list[str] = None) -> bool:
+    """removes tags in list from ALL transactions in provided list
+
+    Args:
+        transaction_list (list[int], optional): list of transaction ids.
+        tags (list[str], optional): list of tags to remove from transactions.
+
+    Returns:
+        bool: returns true on successful removal of ALL tags from ALL 
+            transactions; false on atleast one failed removal, empty lists, or 
+            db error
+    """
+    #TODO
+    pass
 
 def _db_debug_print (E):
     for i in E:
