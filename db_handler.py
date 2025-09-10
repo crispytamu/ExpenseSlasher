@@ -58,7 +58,7 @@ def db_init(db_name: str = "data.db"):
     finally:
         DB.commit()
 
-def db_fetch_all () -> list[tuple[int,str,str,float,list[str]]]:
+def db_fetch_all () -> list[tuple[int,str,str,float,str]]:
     fetch = []
     """
         First we grab all the cols in transaction table and a col which lists
@@ -146,7 +146,47 @@ def db_add_transaction (date: str, desc: str, amnt: float, tags:list[str]) -> bo
         return False
     return True
 
-    
+def db_fetch_set (date:str = None, desc: str = None, amnt: float = None, tags:list[str] = None) -> list[tuple[str,str,str,float,str]]:
+    query = """
+        SELECT 
+            T.ROWID, T.date, T.desc, T.amnt, GROUP_CONCAT(Tag.name) as tags
+        FROM
+            transactions AS T
+        JOIN
+            transactions_tags AS JT ON T.ROWID = JT.transaction_id
+        JOIN
+            tags AS Tag ON JT.tag_id = Tag.ROWID
+        WHERE 1=1
+        """
+    params = []
+    if date is not None:
+        query += " AND T.date = ?"
+        params.append(date)
+    if desc is not None:
+        query += " and T.desc LIKE ?"
+        params.append(f"%{desc}%")
+    if amnt is not None:
+        query += " and amnt = ?"
+        params.append(amnt)
+    if tags:
+        tmp = ','.join(['?'] * len(tags))
+        query += f" AND Tag.name IN ({tmp})"
+        params.extend(tags)
+        
+    query += """
+        GROUP BY
+            T.ROWID
+    """    
+    try:
+        CURSOR.execute(query,tuple(params))
+        return CURSOR.fetchall()
+    except sqlite3.Error as e:
+        print("DB Error: ",e)
+
+def _db_debug_print (E):
+    for i in E:
+        print(i)
+        
 def _db_debug():
     if os.path.exists("debug.db"):
         os.remove("debug.db")
@@ -155,8 +195,16 @@ def _db_debug():
     db_add_transaction("2000-01-05","McDonalds",12.99,["Fast Food"])
     db_add_transaction("2000-03-19","HEB",249.99,["Groceries","Extra"])
     db_add_transaction("2001-09-13","Taco Bell", 11.46,["Fast Food"])
+    db_add_transaction("2000-01-20", "Burger King", 15.50, ["Fast Food", "Lunch"])
+    db_add_transaction("2000-02-05", "Exxon Gas Station", 45.00, ["Gas", "Commute"])
+    db_add_transaction("2000-04-10", "Amazon", 8.99, [])
+    db_add_transaction("2000-05-15", "Movie Theater", 32.75, ["Entertainment", "Date Night"])
+    db_add_transaction("2000-06-25", "Whole Foods", 75.00, ["Groceries"])
+    db_add_transaction("2000-07-30", "Netflix", 16.99, ["Subscription", "Entertainment"])
+    db_add_transaction("2001-01-01", "New Year's Eve Party", 100.00, ["Entertainment", "Holiday", "Drinks"])
     #print(db_fetch_all_tagless())
-    print(db_fetch_all())
+    #_db_debug_print(db_fetch_all())
+    _db_debug_print(db_fetch_set(None,None,None,["Entertainment"]))
 
 
 
