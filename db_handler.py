@@ -392,11 +392,24 @@ def db_bulk_add_transaction (transaction_list:list[str,str,float,list[str]] = No
 
     Returns:
         bool: returns true on successful add of ALL transactions;
-            false on atleast one failed add or db error
+            false on atleast one failed add, empty transaction list, or db error
     """
     #TODO
     pass
 
+def db_bulk_remove_transaction(transaction_list: list[int] = None) -> bool:
+    """removes several transactions based on transaction list
+
+    Args:
+        transaction_list (list[int], optional): list of transaction IDs.
+            Defaults to None.
+
+    Returns:
+        bool: returns True on successful removal of ALL transactions;
+            false if atleast one removal fails, empty id list, or db error
+    """
+    #TODO
+    pass
 def _db_debug_print (E):
     for i in E:
         print(i)
