@@ -272,7 +272,48 @@ def db_edit_transaction (transactionID: int,
         print("Error updating transaction: ",e)
         DB.rollback()
         return False
-    
+
+def db_add_transaction_tags (transactionID: int, tags: list[str] = None) -> bool:
+    """Adds the list of tags to transaction id
+
+    Args:
+        transactionID (int): transaction id, from preivous fetches
+        tags (list[str], optional): list of tags as strings to add. Defaults to None.
+
+    Returns:
+        bool: returns True on successful/duplicate addition,
+              false on no/unsuccessful edit
+    """    
+    if tags is not None:
+        try:
+            for tag in tags:
+                #First search tags table if tag exists
+                CURSOR.execute("SELECT ROWID FROM tags WHERE name = ?", (tag,))
+                res = CURSOR.fetchone()
+                
+                #if tag found, grab id, if not, insert and grab new id
+                if res:
+                    tag_id = res[0]
+                else:
+                    CURSOR.execute("INSERT INTO tags (name) VALUES (?)", (tag,))
+                    tag_id = CURSOR.lastrowid
+                
+                #then link transaction to tag in joint table
+                CURSOR.execute("""
+                    INSERT OR IGNORE INTO transactions_tags (transaction_id, tag_id)
+                    VALUES (?,?)
+                """, (transactionID,tag_id))
+               
+            DB.commit()
+            print(f"Tags for Transaction ID: {transactionID} added successfully!")
+            return True
+        except sqlite3.Error as e:
+            print("Error adding tag: ",e)
+            DB.rollback()
+            return False 
+    else:
+        print("No tags to add")
+        return False
 def _db_debug_print (E):
     for i in E:
         print(i)
@@ -300,7 +341,10 @@ def _db_debug():
     #_db_debug_print(db_fetch_set(None,None,None,None))
     db_edit_transaction(4,amnt=69.69)
     db_edit_transaction(6,desc="Amazon-Weekly shipment")
-    _db_debug_print(db_fetch_all_tagless())
+    db_add_transaction_tags(6,["Travel","Out-Of-Country"])
+    db_add_transaction_tags(10,["Fast Food"])
+    db_add_transaction_tags(13,["Date Night"])
+    _db_debug_print(db_fetch_all())
 
 
 
