@@ -369,6 +369,19 @@ def db_delete_transaction_tags (transactionID: int, tags: list[str] = None) -> b
         print("No passed tags to remove")
         return False
 
+def db_delete_transaction (transactionID: int) -> bool:
+    """function to remove a single transaction by transaction ID
+
+    Args:
+        transactionID (int): transaction ID, from preivous fetches
+
+    Returns:
+        bool: returns true on a successful removal; false on non matching entry
+            or database error
+    """
+    #TO-DO
+    pass
+
 def _db_debug_print (E):
     for i in E:
         print(i)
