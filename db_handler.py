@@ -369,6 +369,7 @@ def db_delete_transaction_tags (transactionID: int, tags: list[str] = None) -> b
         print("No passed tags to remove")
         return False
 
+#TODO
 def db_delete_transaction (transactionID: int) -> bool:
     """function to remove a single transaction by transaction ID
 
@@ -379,7 +380,21 @@ def db_delete_transaction (transactionID: int) -> bool:
         bool: returns true on a successful removal; false on non matching entry
             or database error
     """
-    #TO-DO
+    #TODO
+    pass
+
+def db_bulk_add_transaction (transaction_list:list[str,str,float,list[str]] = None) -> bool:
+    """bulk adds transactions from a list of transactions
+
+    Args:
+        transaction_list (list[str,str,float,list[str]], optional): 
+        list of transaction data to add. Defaults to None.
+
+    Returns:
+        bool: returns true on successful add of ALL transactions;
+            false on atleast one failed add or db error
+    """
+    #TODO
     pass
 
 def _db_debug_print (E):
