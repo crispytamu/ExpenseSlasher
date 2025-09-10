@@ -222,6 +222,57 @@ def db_fetch_set (date:str = None,
     except sqlite3.Error as e:
         print("DB Error: ",e)
 
+def db_edit_transaction (transactionID: int,
+                         date: str = None,
+                         desc: str = None,
+                         amnt: float = None) -> bool:
+    """edits a SINGLE transaction of their core data points, which does not
+    include tags. Use db_add_transaction_tags or db_del_transaction_tags for 
+    tag mutating
+
+    Args:
+        transactionID (int): Transaction ID of trans to edit; aquired from 
+                             previous fetch calls
+        date (str, optional): New date string. Defaults to None.
+        desc (str, optional): New desc string. Defaults to None.
+        amnt (float, optional): New amnt float. Defaults to None.
+
+    Returns:
+        bool: True on successful edit, false on no edit made/unsuccessful edit
+    """    
+    commands = []
+    params = []
+    
+    if date is not None:
+        commands.append("date = ?")
+        params.append(date)
+    if desc is not None:
+        commands.append("desc = ?")
+        params.append(desc)
+    if amnt is not None:
+        commands.append("amnt = ?")
+        params.append(amnt)
+        
+    if not commands:
+        print("No data to update.")
+        return False
+    
+    try:
+        query = f"""UPDATE transactions
+                   SET {",".join(commands)}
+                   WHERE ROWID = ?
+                """
+        params.append(transactionID)
+        
+        CURSOR.execute(query,tuple(params))
+        DB.commit()
+        print(f"Transaction with ID {transactionID} updated successfully!")
+        return True
+    except sqlite3.Error as e:
+        print("Error updating transaction: ",e)
+        DB.rollback()
+        return False
+    
 def _db_debug_print (E):
     for i in E:
         print(i)
@@ -247,6 +298,9 @@ def _db_debug():
     _db_debug_print(db_fetch_all_tagless())
     #_db_debug_print(db_fetch_all())
     #_db_debug_print(db_fetch_set(None,None,None,None))
+    db_edit_transaction(4,amnt=69.69)
+    db_edit_transaction(6,desc="Amazon-Weekly shipment")
+    _db_debug_print(db_fetch_all_tagless())
 
 
 
