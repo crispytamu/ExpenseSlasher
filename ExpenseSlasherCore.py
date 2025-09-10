@@ -39,7 +39,7 @@ def _db_init():
         conn.commit()
 
 def ensure_file():
-    """Kept for compatibility with your CSV code; now initializes DB."""
+    """Ensure the DB file and table exist."""
     _db_init()
 
 #CSV-like API for SQLite
@@ -72,7 +72,7 @@ def add_transaction(date, description, category, amount, ttype):
         conn.commit()
 
 def load_transactions():
-    """Return a list of dicts with the same keys your CSV reader produced."""
+    """Return a list of dictionaries from the SQLite DB."""
     ensure_file()
     with _db_connect() as conn:
         conn.row_factory = sqlite3.Row
