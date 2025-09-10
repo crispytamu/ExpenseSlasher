@@ -17,54 +17,290 @@ def db_init(db_name: str = "data.db"):
     Args:
         db_name (str, optional): File name for database; Defaults to "data.db".
     """
+    
+    #Building global variables
     global DB
     global CURSOR
     DB = sqlite3.connect(db_name)
     CURSOR = DB.cursor()
     
+    #building db tables
     try:
-        CURSOR.execute("CREATE TABLE transactions(date, descrip, amnt, tags)")
-    except sqlite3.OperationalError:
-        print("Table already exists, skipping...")
-    
-def _db_testFetch ():
+        #transaction table
+        CURSOR.execute("""
+            CREATE TABLE transactions (
+                date TEXT,
+                desc TEXT,
+                amnt REAL
+            );
+        """)
+        
+        #tag table
+        CURSOR.execute("""
+            CREATE TABLE tags (
+                name TEXT UNIQUE
+            );
+        """)
+        
+        #transaction_tag joint table
+        CURSOR.execute("""
+            CREATE TABLE transactions_tags (
+                transaction_id INTEGER NOT NULL, 
+                tag_id INTEGER NOT NULL, 
+                FOREIGN KEY (transaction_id) REFERENCES transactions(ROWID),
+                FOREIGN KEY (tag_id) REFERENCES tags (ROWID)
+                UNIQUE (transaction_id, tag_id)
+            );
+        """)
+    except sqlite3.OperationalError as e:
+        print("Error Creating Tables...")
+        print(e)
+    finally:
+        DB.commit()
+
+def db_fetch_all () -> list[tuple[int,str,str,float,str]]:
     fetch = []
-    for row in CURSOR.execute("SELECT date, descrip, amnt, tags FROM transactions"):
-        fetch.append(row)
-    fetch.sort(key=_db_sortByDate)
-    print(fetch)
-
-def _db_testAdd ():
+    """
+        First we grab all the cols in transaction table and a col which lists
+        all the Tag names in a list related to a single transaction
+        
+        then we merge the joint table to the trans table, using the
+        transaction ids as the common id
+        
+        we then add the tags table to the joint table, using the tag ids as the
+        common id
+        
+        finally, grouping the entries by rowid will allow the group concat to
+        merge duplicate transaction records' tags into a single entry with a
+        list of its matching tags and outputs that single transaction record
+    """
     CURSOR.execute("""
-        INSERT INTO transactions VALUES
-            ('1/5/2000','McDonalds', 13.75, 'Fast Food'),
-            ('1/2/2000','Exxon Gas Station', 25.00, 'Gas'),
-            ('1/16/2000','Target Supercenter', 81.66, 'None')
-    """)
-    DB.commit()
+        SELECT T.ROWID, T.date, T.desc, T.amnt, GROUP_CONCAT(Tag.name) as tags
+        FROM transactions as T
+        LEFT JOIN transactions_tags as JT on T.ROWID = JT.transaction_id
+        LEFT JOIN tags as Tag On JT.tag_id = Tag.ROWID
+        GROUP BY T.ROWID
+        """)
+    fetch = CURSOR.fetchall()
+    return fetch
+  
+def db_fetch_all_tagless () -> list[tuple[int,str,str,float]]:
+    """Fetches all transactions in transaction table and retuns list of tuples
+    representing each transaction WITHOUT tags
 
-def _db_testEdit():
-    pass
+    Returns:
+        list[tuple[str,str,float]]: list of tuples representing transactions
+    """    
+    fetch = []
+    for row in CURSOR.execute("""
+            SELECT ROWID, date, desc, amnt 
+            FROM transactions 
+            ORDER BY ROWID
+    """):
+        fetch.append(row)
+    return fetch
 
-def _db_testRemove():
-    pass
+def db_add_transaction (date: str, desc: str, amnt: float, tags:list[str]) -> bool:
+    """Database function to add a single transaction to the database
 
-def _db_sortByDate(e: str) -> int:
-    arr = e[0].split('/')
-    sum = 0
-    for val in arr:
-        sum += int(val)
-    return sum
-    
-def _db_debug():
+    Args:
+        date (str): Date of transaction in format YYYY-MM-DD
+        desc (str): Description of transaction
+        amnt (float): Ammount for transaction, where debits are positive and
+        credits are negative. i.e: Buying - (2.00), Refunding - (-2.00)
+        tags (list[str]): Array of strings containing tags for sorting
+
+    Returns:
+        bool: Returns True/False based on successful database entry
+    """    
     try:
-        open("debug.db","r")
-        os.system("del debug.db")
-    except FileNotFoundError:
-        pass
+        #insert to transaction table
+        entryData = (date,desc,amnt)
+        CURSOR.execute("""
+            INSERT INTO transactions (date,desc,amnt)
+            VALUES (?,?,?)
+        """, entryData)
+        trans_id = CURSOR.lastrowid
+        
+        #insert to tags table
+        for tag in tags:
+            #see if tag exists in tag table
+            CURSOR.execute("SELECT ROWID FROM tags WHERE name = ?", (tag,))
+            tagSearchRes = CURSOR.fetchone()
+
+            if tagSearchRes: #if tag exists
+                tag_id = tagSearchRes[0] #set tag_id to that id
+            else:#else, insert new entry to tag table and get tag id
+                CURSOR.execute("INSERT INTO tags (name) VALUES (?)", (tag,))
+                tag_id = CURSOR.lastrowid
+            
+            #insert to trans_tags table
+            CURSOR.execute("""
+                INSERT INTO transactions_tags (transaction_id,tag_id)
+                VALUES (?,?)
+            """, (trans_id,tag_id))
+        DB.commit()
+    except sqlite3.Error as e:
+        print("Error writting entry: ",e)
+        DB.rollback()
+        return False
+    return True
+
+def db_fetch_set (date:str = None,
+                  desc: str = None,
+                  amnt: tuple[str,float]|float = None,
+                  tags:list[str] = None) -> list[tuple[str,str,str,float,str]]:
+    """DB lookup method for a subset of records based on search critera
+
+    Args:
+        date (str, optional): date in YYYY-MM-DD format. Defaults to None.
+        desc (str, optional): Description of charge, SQLite 3 attempts autofill.
+                              Defaults to None.
+        amnt (tuple[str,float] | float, optional): Exact value or above/below.
+            For Exact: pass float for exact amnt searching for
+            For Range: pass tuple[str,float] where str is +/> or -/<
+                       results are inclusive
+            Defaults to None.
+        tags (list[str], optional): List of tags as strings. Defaults to None.
+
+    Returns:
+        list[tuple[str,str,str,float,str]]: list of records that match search
+            criteria as tuples with following data:
+            str: Transaction ID
+            str: Date
+            str: Description
+            float: ammount (+ is debit, - is credit)
+            str: string of tags seperated by ','
+    """
+    
+    #Base query
+    query = """
+        SELECT 
+            T.ROWID, T.date, T.desc, T.amnt, GROUP_CONCAT(Tag.name) as tags
+        FROM
+            transactions AS T
+        LEFT JOIN
+            transactions_tags AS JT ON T.ROWID = JT.transaction_id
+        LEFT JOIN
+            tags AS Tag ON JT.tag_id = Tag.ROWID
+        WHERE 1=1
+        """
+    params = []
+    
+    #dynamically appending to query if search criteria exists
+    if date is not None:
+        query += " AND T.date = ?"
+        params.append(date)
+    if desc is not None:
+        query += " and T.desc LIKE ?"
+        params.append(f"%{desc}%")
+    if amnt is not None:
+        #checks if single float or tuple for range
+        if type(amnt) == float:
+            query += " and amnt = ?"
+            params.append(amnt)
+        else:
+            if amnt[0] == '-' or amnt[0] == '<':
+                query += " and amnt <= ?"
+            elif amnt[0] == '+' or amnt[0] == '>':
+                query += " and amnt >= ?"
+            else: #invalid tuple symbol results in exact search
+                query += " and amnt = ?"
+            params.append(amnt[1])
+    if tags:
+        tmp = ','.join(['?'] * len(tags))
+        query += f" AND Tag.name IN ({tmp})"
+        params.extend(tags)
+        
+    query += """
+        GROUP BY
+            T.ROWID
+    """    
+    try:
+        CURSOR.execute(query,tuple(params))
+        return CURSOR.fetchall()
+    except sqlite3.Error as e:
+        print("DB Error: ",e)
+
+def db_edit_transaction (transactionID: int,
+                         date: str = None,
+                         desc: str = None,
+                         amnt: float = None) -> bool:
+    """edits a SINGLE transaction of their core data points, which does not
+    include tags. Use db_add_transaction_tags or db_del_transaction_tags for 
+    tag mutating
+
+    Args:
+        transactionID (int): Transaction ID of trans to edit; aquired from 
+                             previous fetch calls
+        date (str, optional): New date string. Defaults to None.
+        desc (str, optional): New desc string. Defaults to None.
+        amnt (float, optional): New amnt float. Defaults to None.
+
+    Returns:
+        bool: True on successful edit, false on no edit made/unsuccessful edit
+    """    
+    commands = []
+    params = []
+    
+    if date is not None:
+        commands.append("date = ?")
+        params.append(date)
+    if desc is not None:
+        commands.append("desc = ?")
+        params.append(desc)
+    if amnt is not None:
+        commands.append("amnt = ?")
+        params.append(amnt)
+        
+    if not commands:
+        print("No data to update.")
+        return False
+    
+    try:
+        query = f"""UPDATE transactions
+                   SET {",".join(commands)}
+                   WHERE ROWID = ?
+                """
+        params.append(transactionID)
+        
+        CURSOR.execute(query,tuple(params))
+        DB.commit()
+        print(f"Transaction with ID {transactionID} updated successfully!")
+        return True
+    except sqlite3.Error as e:
+        print("Error updating transaction: ",e)
+        DB.rollback()
+        return False
+    
+def _db_debug_print (E):
+    for i in E:
+        print(i)
+        
+def _db_debug():
+    if os.path.exists("debug.db"):
+        os.remove("debug.db")
+    
     db_init("debug.db")
-    _db_testAdd()
-    _db_testFetch()
+    db_add_transaction("2000-01-05","McDonalds",12.99,["Fast Food"])
+    db_add_transaction("2000-03-19","HEB",249.99,["Groceries","Extra"])
+    db_add_transaction("2001-09-13","Taco Bell", 11.46,["Fast Food"])
+    db_add_transaction("2000-01-20", "Burger King", 15.50, ["Fast Food", "Lunch"])
+    db_add_transaction("2000-02-05", "Exxon Gas Station", 45.00, ["Gas", "Commute"])
+    db_add_transaction("2000-04-10", "Amazon", 8.99, [])
+    db_add_transaction("2000-05-15", "Movie Theater", 32.75, ["Entertainment", "Date Night"])
+    db_add_transaction("2000-06-25", "Whole Foods", 75.00, ["Groceries"])
+    db_add_transaction("2000-07-30", "Netflix", 16.99, ["Subscription", "Entertainment"])
+    db_add_transaction("2001-01-01", "ZeroTag1", 100.00, [])
+    db_add_transaction("2001-01-01", "ZeroTag2", 100.00, [])
+    db_add_transaction("2001-01-01", "ZeroTag3", 100.00, [])
+    db_add_transaction("2001-01-01", "ZeroTag4", 100.00, [])
+    _db_debug_print(db_fetch_all_tagless())
+    #_db_debug_print(db_fetch_all())
+    #_db_debug_print(db_fetch_set(None,None,None,None))
+    db_edit_transaction(4,amnt=69.69)
+    db_edit_transaction(6,desc="Amazon-Weekly shipment")
+    _db_debug_print(db_fetch_all_tagless())
 
 
 
