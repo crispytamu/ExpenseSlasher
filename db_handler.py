@@ -84,7 +84,7 @@ def db_fetch_all () -> list[tuple[int,str,str,float,str]]:
     fetch = CURSOR.fetchall()
     return fetch
   
-def db_fetch_all_tagless () -> list[tuple[str,str,float]]:
+def db_fetch_all_tagless () -> list[tuple[int,str,str,float]]:
     """Fetches all transactions in transaction table and retuns list of tuples
     representing each transaction WITHOUT tags
 
@@ -93,9 +93,9 @@ def db_fetch_all_tagless () -> list[tuple[str,str,float]]:
     """    
     fetch = []
     for row in CURSOR.execute("""
-            SELECT date, desc, amnt 
+            SELECT ROWID, date, desc, amnt 
             FROM transactions 
-            ORDER BY date
+            ORDER BY ROWID
     """):
         fetch.append(row)
     return fetch
@@ -244,9 +244,9 @@ def _db_debug():
     db_add_transaction("2001-01-01", "ZeroTag2", 100.00, [])
     db_add_transaction("2001-01-01", "ZeroTag3", 100.00, [])
     db_add_transaction("2001-01-01", "ZeroTag4", 100.00, [])
-    #print(db_fetch_all_tagless())
+    _db_debug_print(db_fetch_all_tagless())
     #_db_debug_print(db_fetch_all())
-    _db_debug_print(db_fetch_set(None,None,None,None))
+    #_db_debug_print(db_fetch_set(None,None,None,None))
 
 
 
