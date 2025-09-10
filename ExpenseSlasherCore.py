@@ -1,51 +1,92 @@
 #!/usr/bin/env python3
 """
-Expense Slasher Core Functionality
+Expense Slasher (SQLite-backed)
 
 Requirements:
 • Input transactions (date, description, category, amount, type: income or expense)
-• Store in CSV
+• Store in SQLite database
 • Categorize transactions (food, rent, utilities, entertainment, etc.)
 • Functions to calculate total income, total expenses, and net savings
 """
 
-#CSV Library for storage
-#OS to check if file exists where ran
-#Date time to handle dates for transactions
-import csv
+# OS for file checks, sqlite3 for DB, datetime for dates
 import os
+import sqlite3
 from datetime import datetime
 
-CSV_FILE = "transactions.csv"
+DB_FILE = "expenses.db"
 FIELDS = ["date", "description", "category", "amount", "type"]
 
+#DB Bootstrap
 
-#Function checks if file exists, if not creates it
+def _db_connect():
+    return sqlite3.connect(DB_FILE)
+
+def _db_init():
+    """Create the transactions table if it doesn't exist."""
+    with _db_connect() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                description TEXT NOT NULL,
+                category TEXT NOT NULL,
+                amount REAL NOT NULL,
+                type TEXT NOT NULL CHECK (type IN ('income', 'expense'))
+            );
+        """)
+        conn.commit()
+
 def ensure_file():
-    if not os.path.exists(CSV_FILE):
-        with open(CSV_FILE, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=FIELDS)
-            writer.writeheader()
+    """Kept for compatibility with your CSV code; now initializes DB."""
+    _db_init()
+
+#CSV-like API for SQLite
 
 def add_transaction(date, description, category, amount, ttype):
+    """Insert a row into SQLite (compatible signature)."""
     ensure_file()
-    with open(CSV_FILE, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=FIELDS)
-        writer.writerow({
-            "date": date,
-            "description": description,
-            "category": category,
-            "amount": float(amount),
-            "type": ttype.lower()
-        })
+    if not date:
+        date = datetime.today().strftime("%Y-%m-%d")
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        raise ValueError("Date must be YYYY-MM-DD")
+
+    try:
+        amt = float(amount)
+    except ValueError:
+        raise ValueError("Amount must be numeric")
+
+    ttype = (ttype or "").strip().lower()
+    if ttype not in ("income", "expense"):
+        raise ValueError("Type must be 'income' or 'expense'")
+
+    with _db_connect() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO transactions (date, description, category, amount, type)
+            VALUES (?, ?, ?, ?, ?)
+        """, (date, description.strip(), category.strip(), amt, ttype))
+        conn.commit()
 
 def load_transactions():
+    """Return a list of dicts with the same keys your CSV reader produced."""
     ensure_file()
-    with open(CSV_FILE, newline="") as f:
-        reader = csv.DictReader(f)
-        return list(reader)
+    with _db_connect() as conn:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT date, description, category, amount, type
+            FROM transactions
+            ORDER BY date, rowid
+        """)
+        rows = cur.fetchall()
+        return [{k: row[k] for k in FIELDS} for row in rows]
 
-#Calculation Functions
+#Calculations
+
 def total_income(transactions):
     return sum(float(t["amount"]) for t in transactions if t["type"] == "income")
 
@@ -55,10 +96,11 @@ def total_expenses(transactions):
 def net_savings(transactions):
     return total_income(transactions) - total_expenses(transactions)
 
-#Command line menu
+#Same CLI as before, but updated to reflect DB backend
+
 def menu():
     while True:
-        print("\n=== Exspense Slasher Core ===")
+        print("\n=== Expense Slasher===")
         print("1) Add transaction")
         print("2) Show all transactions")
         print("3) Show summary")
@@ -75,16 +117,13 @@ def menu():
             try:
                 add_transaction(date, description, category, amount, ttype)
                 print("Transaction added.")
-            except ValueError:
-                print("Amount must be numeric.")
-
-#Shows transactions, prints each row as a dictionary
+            except ValueError as e:
+                print(f"Error: {e}")
         elif choice == "2":
             txns = load_transactions()
             for t in txns:
                 print(t)
 
-#Show Summary
         elif choice == "3":
             txns = load_transactions()
             print(f"Total Income : ${total_income(txns):.2f}")
