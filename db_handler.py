@@ -3,6 +3,7 @@ import sqlite3 #SQLite3 for Database
 import sys #sys for importing CLI arguments
 import os #os for automated DB clearing during debug
 
+#TODO - Transaction template
 
 #Global Vars
 DB = None #DB variable
@@ -48,7 +49,7 @@ def db_init(db_name: str = "data.db"):
                 transaction_id INTEGER NOT NULL, 
                 tag_id INTEGER NOT NULL, 
                 FOREIGN KEY (transaction_id) REFERENCES transactions(ROWID),
-                FOREIGN KEY (tag_id) REFERENCES tags (ROWID)
+                FOREIGN KEY (tag_id) REFERENCES tags (ROWID),
                 UNIQUE (transaction_id, tag_id)
             );
         """)
@@ -141,7 +142,7 @@ def db_add_transaction (date: str, desc: str, amnt: float, tags:list[str]) -> bo
             """, (trans_id,tag_id))
         DB.commit()
     except sqlite3.Error as e:
-        print("Error writting entry: ",e)
+        print("Error writing entry: ",e)
         DB.rollback()
         return False
     return True
@@ -488,7 +489,7 @@ if __name__ == "__main__":
         else:
             print("Unrecognized flags, please use debug flags when executing")
     else:
-        print("Improper Module Use. Please import with \"import db_handle.py\"")
+        print("Improper Module Use. Please import with \"import db_handler.py\"")
 else:
     print("Loading database handler module...")
     db_init()
