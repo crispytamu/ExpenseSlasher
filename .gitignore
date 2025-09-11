@@ -9,3 +9,4 @@
 
 #Ignoring other files
 *.pdf
+__pycache__
