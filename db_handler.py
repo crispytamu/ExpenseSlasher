@@ -27,9 +27,12 @@ def db_init(db_name: str = "data.db"):
     
     #building db tables
     try:
+        #enabling foreign keys for cascading deletions
+        CURSOR.execute ("PRAGMA foreign_keys = ON;")
         #transaction table
         CURSOR.execute("""
             CREATE TABLE transactions (
+                transaction_id INTEGER PRIMARY KEY,
                 date TEXT,
                 desc TEXT,
                 amnt REAL
@@ -39,6 +42,7 @@ def db_init(db_name: str = "data.db"):
         #tag table
         CURSOR.execute("""
             CREATE TABLE tags (
+                tag_id INTEGER PRIMARY KEY,
                 name TEXT UNIQUE
             );
         """)
@@ -48,16 +52,15 @@ def db_init(db_name: str = "data.db"):
             CREATE TABLE transactions_tags (
                 transaction_id INTEGER NOT NULL, 
                 tag_id INTEGER NOT NULL, 
-                FOREIGN KEY (transaction_id) REFERENCES transactions(ROWID),
-                FOREIGN KEY (tag_id) REFERENCES tags (ROWID),
+                FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id) ON DELETE CASCADE,
+                FOREIGN KEY (tag_id) REFERENCES tags (tag_id) ON DELETE CASCADE,
                 UNIQUE (transaction_id, tag_id)
             );
         """)
+        DB.commit()
     except sqlite3.OperationalError as e:
         print("Error Creating Tables...")
         print(e)
-    finally:
-        DB.commit()
 
 def db_fetch_all () -> list[tuple[int,str,str,float,str]]:
     fetch = []
@@ -334,32 +337,33 @@ def db_delete_transaction_tags (transactionID: int, tags: list[str] = None) -> b
     if tags is not None:
         try:
             for tag in tags:
-                #checks for entries in joint table with tag name
-                CURSOR.execute("SELECT ROWID FROM tags WHERE name = ?",(tag,))
-                res = CURSOR.fetchone()
-                
-                #if tag exists, remove relational entry
-                if res:
-                    tag_id = res[0]
+                for tag in tags:
+                    #checks for entries in joint table with tag name
+                    CURSOR.execute("SELECT ROWID FROM tags WHERE name = ?",(tag,))
+                    res = CURSOR.fetchone()
                     
-                    CURSOR.execute("""
-                        DELETE FROM transactions_tags
-                        WHERE transaction_id = ? AND tag_id = ?
-                    """,(transactionID,tag_id))
-                    
-                    #check if tag has no other transactions relating to it
-                    CURSOR.execute("""
-                        SELECT COUNT(*) FROM transactions_tags
-                        WHERE tag_id = ?
-                        """,(tag_id,))
-                    otherLinks = CURSOR.fetchone()[0]
-                    
-                    #if no other trans, prune tag from tag table
-                    if otherLinks == 0:
+                    #if tag exists, remove relational entry
+                    if res:
+                        tag_id = res[0]
+                        
                         CURSOR.execute("""
-                            DELETE FROM tags
-                            WHERE ROWID = ?
+                            DELETE FROM transactions_tags
+                            WHERE transaction_id = ? AND tag_id = ?
+                        """,(transactionID,tag_id))
+                        
+                        #check if tag has no other transactions relating to it
+                        CURSOR.execute("""
+                            SELECT COUNT(*) FROM transactions_tags
+                            WHERE tag_id = ?
                             """,(tag_id,))
+                        otherLinks = CURSOR.fetchone()[0]
+                        
+                        #if no other trans, prune tag from tag table
+                        if otherLinks == 0:
+                            CURSOR.execute("""
+                                DELETE FROM tags
+                                WHERE ROWID = ?
+                                """,(tag_id,))
             DB.commit()
             print(f"Tags for transaction ID {transactionID} removed successfully")
             return True
@@ -370,8 +374,7 @@ def db_delete_transaction_tags (transactionID: int, tags: list[str] = None) -> b
         print("No passed tags to remove")
         return False
 
-#TODO
-def db_delete_transaction (transactionID: int) -> bool:
+def db_delete_transaction (transactionID: int = None) -> bool:
     """function to remove a single transaction by transaction ID
 
     Args:
@@ -381,9 +384,91 @@ def db_delete_transaction (transactionID: int) -> bool:
         bool: returns true on a successful removal; false on non matching entry
             or database error
     """
-    #TODO
-    pass
+    #find entry in transactions table
+    if transactionID is not None:
+        try:
+            CURSOR.execute ("""
+                SELECT ROWID 
+                FROM transactions
+                WHERE ROWID = ?
+                """,(transactionID,))
+            res = CURSOR.fetchone()
+            if res:
+                #if found, delete transaction
+                CURSOR.execute ("""
+                    DELETE
+                    FROM transactions
+                    WHERE ROWID = ?
+                    """,(transactionID,))
+                
+                #THEN prune tag table for orphaned tags
+                CURSOR.execute("""
+                    SELECT T.tag_id
+                    FROM tags AS T
+                    LEFT JOIN transactions_tags AS JT
+                    ON T.tag_id = JT.tag_id
+                    WHERE JT.tag_id IS NULL
+                """)
+                orphaned_tags = CURSOR.fetchall()
+                
+                if orphaned_tags:
+                    print("Orphaned tags found, pruning...")
+                    orphaned_ids = [tag[0] for tag in orphaned_tags]
+                    
+                    tmp = ','.join('?' * len(orphaned_ids))
+                    CURSOR.execute(f"""
+                        DELETE
+                        FROM tags
+                        WHERE tag_id
+                        IN ({tmp})
+                    """,tuple(orphaned_ids))
+                
+                DB.commit()
+                print(f"Transaction ID {transactionID} has bee successfully deleted")
+                return True
+            else:
+                print(f"No transaction with ID {transactionID} found")
+                return False
+        except sqlite3.Error as e:
+            print("Error deleting transaction: ",e)
+            DB.rollback()
+            return False
+    else:
+        print("No transaction ID provided")
+        return False
+        
+def db_delete_tag (tags: list[str] = None) -> bool:
+    """function to delete tags from tag list and removes those tags from ALL
+        transactions
 
+    Args:
+        tags (list[str], optional): list of tags to remove. Defaults to None.
+
+    Returns:
+        bool: returns true when ALL tags in list have been removed
+            returns false if atleast one removal fails, empty tag list, or db error
+    """
+    if tags is not None:
+        try:
+            for tag in tags:
+                CURSOR.execute("""
+                    DELETE
+                    FROM tags
+                    WHERE name = ?
+                    """, (tag,))
+            
+            DB.commit()
+            print("Tags successfully deleted")
+            return True
+        except sqlite3.Error as e:
+            print("Error deleting tags: ",e)
+            DB.rollback()
+            return False
+    else:
+        print("Tag list is empty")
+        return False
+
+#TODO    
 def db_bulk_add_transaction (transaction_list:list[str,str,float,list[str]] = None) -> bool:
     """bulk adds transactions from a list of transactions
 
@@ -453,6 +538,12 @@ def _db_debug():
     db_add_transaction("2000-01-05","McDonalds",12.99,["Fast Food"])
     db_add_transaction("2000-03-19","HEB",249.99,["Groceries","Extra"])
     db_add_transaction("2001-09-13","Taco Bell", 11.46,["Fast Food"])
+    _db_debug_print(db_fetch_all())
+    print()
+    
+    db_delete_transaction(2)
+    _db_debug_print(db_fetch_all())
+    print()
     db_add_transaction("2000-01-20", "Burger King", 15.50, ["Fast Food", "Lunch"])
     db_add_transaction("2000-02-05", "Exxon Gas Station", 45.00, ["Gas", "Commute"])
     db_add_transaction("2000-04-10", "Amazon", 8.99, [])
@@ -463,7 +554,8 @@ def _db_debug():
     db_add_transaction("2001-01-01", "ZeroTag2", 100.00, [])
     db_add_transaction("2001-01-01", "ZeroTag3", 100.00, [])
     db_add_transaction("2001-01-01", "ZeroTag4", 100.00, [])
-    _db_debug_print(db_fetch_all_tagless())
+    _db_debug_print(db_fetch_all())
+    print()
     #_db_debug_print(db_fetch_all())
     #_db_debug_print(db_fetch_set(None,None,None,None))
     db_edit_transaction(4,amnt=69.69)
@@ -476,8 +568,34 @@ def _db_debug():
     db_delete_transaction_tags(5,["Commute"])
     db_delete_transaction_tags(7,["Bunga"])
     db_delete_transaction_tags(11,["Fast Food"])
+    _db_debug_print(db_fetch_all())
+    print()
+    return
     db_delete_transaction_tags(9,["Subscription","Entertainment"])
     _db_debug_print(db_fetch_all())
+    print()
+    db_delete_transaction(3)
+    db_delete_transaction(6)
+    _db_debug_print(db_fetch_all())
+    print()
+    
+    db_add_transaction_tags(1,["Howdy"])
+    db_add_transaction_tags(4,["Howdy"])
+    db_add_transaction_tags(5,["Howdy"])
+    db_add_transaction_tags(7,["Howdy"])
+    db_add_transaction_tags(8,["Howdy"])
+    db_add_transaction_tags(9,["Howdy"])
+    db_add_transaction_tags(10,["Howdy"])
+    db_add_transaction_tags(11,["Howdy"])
+    db_add_transaction_tags(12,["Howdy"])
+    db_add_transaction_tags(13,["Howdy"])
+    _db_debug_print(db_fetch_all())
+    print()
+    
+    db_delete_tag(["howdy"])
+    db_delete_tag(["Howdy"])
+    _db_debug_print(db_fetch_all())
+    
 
 
 
