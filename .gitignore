@@ -10,3 +10,4 @@
 #Ignoring other files
 *.pdf
 __pycache__
+*.docx
