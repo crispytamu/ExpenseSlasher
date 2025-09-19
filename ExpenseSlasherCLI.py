@@ -130,10 +130,8 @@ def menu():
         print("\n=== Expense Slasher Core ===")
         print("1) Add transaction")
         print("2) Show all transactions")
-        print("3) Show summary")  # move to reports menu
-        print("4) Show net value")  # move to reports menu
-        print("5) Remove a transaction")  # Pablo Adding
-        print("6) Reports Menu")
+        print("3) Remove a transaction")  # Pablo Adding
+        print("4) Reports Menu")
         print("0) Exit")
 
         choice = input("Choose: ").strip()
@@ -156,17 +154,7 @@ def menu():
             for t in txns:
                 print(t)
 
-        elif choice == "3":
-            txns = load_transactions()
-            print(f"Total Income : ${total_income(txns):.2f}")
-            print(f"Total Expense: ${total_expenses(txns):.2f}")
-            print(f"Net Savings  : ${net_savings(txns):.2f}")
-
-        elif choice == "4":
-            txns = load_transactions()
-            print(f"Net Value :${net_value(txns):.2f}")
-
-        elif choice == "5":  # Add Modifications
+        elif choice == "3":  # Add Modifications
             txns = load_transactions()
             list_transactions_print(txns)
             if not txns:
@@ -183,7 +171,7 @@ def menu():
                 total = info
                 print(f"Invalid index. Must be between 0 and {total-1}.")
 
-        elif choice == "6":  # Reports Menu
+        elif choice == "4":  # Reports Menu
             show_reports_menu()
 
         elif choice == "0":
