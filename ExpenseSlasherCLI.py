@@ -55,17 +55,85 @@ def remove_transaction_by_index(index):
     save_transactions(txns)
     return True, removed
 
-# For CLI
+
+# ---------------- Reports Menu ---------------
+def show_reports_menu():
+    while True:
+        print("\n=== Reports ===")
+        print("1) Total income vs. total expenses")
+        print("2) Total expenses by category")
+        print("3) Back")
+        choice = input("Choose: ").strip()
+
+        if choice == "1":
+            report_income_vs_expenses()
+        elif choice == "2":
+            report_expenses_by_category()
+        elif choice == "3":
+            break
+        else:
+            print("Invalid choice. Try again.")
+
+
+def report_income_vs_expenses():
+    # Load fresh each time in case data changed
+    txns = load_transactions()
+    inc = total_income(txns)
+    exp = total_expenses(txns)
+    net = inc - exp
+
+    print("\n--- Total Income vs. Total Expenses ---")
+    print(f"Total Income : ${inc:,.2f}")
+    print(f"Total Expense: ${exp:,.2f}")
+    print(f"Net          : ${net:,.2f}")
+    if inc > 0:
+        print(f"Expense / Income: {(exp / inc) * 100:,.2f}%")
+    elif exp > 0:
+        print("Expense / Income: ∞ (no income yet)")
+    else:
+        print("No transactions yet.")
+
+
+def report_expenses_by_category():
+    from collections import defaultdict
+
+    txns = load_transactions()
+    by_cat = defaultdict(float)
+
+    for t in txns:
+        if str(t.get("type", "")).lower() == "expense":
+            cat = (t.get("category") or "").strip() or "Uncategorized"
+            try:
+                amt = float(t.get("amount", 0))
+            except (TypeError, ValueError):
+                amt = 0.0
+            by_cat[cat] += amt
+
+    print("\n--- Total Expenses by Category ---")
+    if not by_cat:
+        print("(no expenses found)")
+        return
+
+    # sorted largest first
+    rows = sorted(by_cat.items(), key=lambda kv: kv[1], reverse=True)
+    cat_width = max(12, min(28, max(len(k) for k, _ in rows)))
+    print(f"{'Category'.ljust(cat_width)}  Total")
+    print(f"{'-'*cat_width}  {'-'*12}")
+    for cat, total in rows:
+        print(f"{cat.ljust(cat_width)}  ${total:,.2f}")
+
+# ---------------- CLI Menu ----------------
 
 
 def menu():
     while True:
-        print("\n=== Exspense Slasher Core ===")
+        print("\n=== Expense Slasher Core ===")
         print("1) Add transaction")
         print("2) Show all transactions")
-        print("3) Show summary")
-        print("4) Show net value")  # Curtis
+        print("3) Show summary")  # move to reports menu
+        print("4) Show net value")  # move to reports menu
         print("5) Remove a transaction")  # Pablo Adding
+        print("6) Reports Menu")
         print("0) Exit")
 
         choice = input("Choose: ").strip()
@@ -114,6 +182,9 @@ def menu():
             else:
                 total = info
                 print(f"Invalid index. Must be between 0 and {total-1}.")
+
+        elif choice == "6":  # Reports Menu
+            show_reports_menu()
 
         elif choice == "0":
             print("Goodbye!")
