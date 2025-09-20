@@ -162,7 +162,7 @@ def menu():
         print("\n=== Expense Slasher Core ===")
         print("1) Add transaction")
         print("2) Show all transactions")
-        print("3) Remove a transaction")  # Pablo Adding
+        print("3) Remove a transaction")
         print("4) Reports Menu")
         print("0) Exit")
 
