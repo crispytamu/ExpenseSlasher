@@ -11,9 +11,12 @@ Requirements:
 
 import os
 from datetime import datetime
-
+from collections import defaultdict, Counter
+from datetime import datetime
 
 # Calculation Functions
+
+
 def total_income(transactions):
     return sum(float(t["amount"]) for t in transactions if t["type"] == "income")
 
@@ -62,7 +65,8 @@ def show_reports_menu():
         print("\n=== Reports ===")
         print("1) Total income vs. total expenses")
         print("2) Total expenses by category")
-        print("3) Back")
+        print("3) Monthly breakdown (income, expenses, net)")
+        print("4) Back")
         choice = input("Choose: ").strip()
 
         if choice == "1":
@@ -70,6 +74,8 @@ def show_reports_menu():
         elif choice == "2":
             report_expenses_by_category()
         elif choice == "3":
+            report_monthly_breakdown()
+        elif choice == "4":
             break
         else:
             print("Invalid choice. Try again.")
@@ -122,9 +128,35 @@ def report_expenses_by_category():
     for cat, total in rows:
         print(f"{cat.ljust(cat_width)}  ${total:,.2f}")
 
+
+def _ym(dstr):  # "2025-09-18" -> "2025-09"
+    return datetime.strptime(dstr, "%Y-%m-%d").strftime("%Y-%m")
+
+
+def report_monthly_breakdown():
+    txns = load_transactions()
+    buckets = defaultdict(lambda: {"income": 0.0, "expense": 0.0})
+    for t in txns:
+        ym = _ym(t["date"])
+        amt = float(t["amount"])
+        if t["type"] == "income":
+            buckets[ym]["income"] += amt
+        elif t["type"] == "expense":
+            buckets[ym]["expense"] += amt
+    rows = sorted(buckets.items())  # by year-month
+    print("\n------ Monthly Breakdown (Income | Expense | Net) ------")
+    if not rows:
+        print("(no transactions)")
+        return
+    print(" Month          Income           Expense          Net")
+    print("---------------------------------------------------------")
+    for ym, v in rows:
+        net = v["income"] - v["expense"]
+        print(
+            f"{ym}  ${v['income']:>13,.2f}  ${v['expense']:>13,.2f}  ${net:>13,.2f}")
+
+
 # ---------------- CLI Menu ----------------
-
-
 def menu():
     while True:
         print("\n=== Expense Slasher Core ===")
