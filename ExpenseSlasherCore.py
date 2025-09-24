@@ -152,6 +152,32 @@ def remove_transaction_by_index(index: int):
         # deletion not implemented, return count
         return False, len(txns)
 
+#Report function generates simple financial summaries from the transactions
+#already stored in the DB. This does not change or delete any data. Only read and calculate.
+def report_income_vs_expenses(start_date: str | None = None,
+                              end_date: str | None = None) -> dict:
+    """
+    Returns {'income': float, 'expenses': float, 'net': float}
+    Filters by inclusive date range if start/end given as 'YYYY-MM-DD'.
+    """
+    from datetime import datetime
+    sd = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None
+    ed = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else None
+
+    income = expenses = 0.0
+    for t in load_transactions():
+        d = datetime.strptime(t["date"], "%Y-%m-%d").date()
+        if sd and d < sd: 
+            continue
+        if ed and d > ed:
+            continue
+        if t["type"] == "income":
+            income += float(t["amount"])
+        else:
+            expenses += float(t["amount"])
+    return {"income": income, "expenses": expenses, "net": income - expenses}
+
+
 # ---------------- Bind Core into CLI ----------------
 #This overwrites CLI CSV based functions with CORE DB functions
 cli.add_transaction = add_transaction
