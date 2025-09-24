@@ -93,7 +93,7 @@ def db_fetch_all_tagless () -> list[tuple[int,str,str,float]]:
     representing each transaction WITHOUT tags
 
     Returns:
-        list[tuple[str,str,float]]: list of tuples representing transactions
+        list[tuple[int,str,str,float]]: list of tuples representing transactions
     """    
     fetch = []
     for row in CURSOR.execute("""
@@ -468,6 +468,22 @@ def db_delete_tag (tags: list[str] = None) -> bool:
         print("Tag list is empty")
         return False
 
+def db_fetch_tags () -> list[tuple[int,str]]:
+    """Fetches a list of all tags in db
+
+    Returns:
+        list[tuple[int,str]]: list of tuples representing tags and their ids
+    """    
+    fetch = []
+    
+    for row in CURSOR.execute("""
+            SELECT ROWID, name
+            FROM tags
+            ORDER BY ROWID
+        """):
+        fetch.append(row)
+    return fetch
+
 #TODO    
 def db_bulk_add_transaction (transaction_list:list[str,str,float,list[str]] = None) -> bool:
     """bulk adds transactions from a list of transactions
@@ -554,7 +570,7 @@ def _db_debug():
     db_add_transaction("2001-01-01", "ZeroTag2", 100.00, [])
     db_add_transaction("2001-01-01", "ZeroTag3", 100.00, [])
     db_add_transaction("2001-01-01", "ZeroTag4", 100.00, [])
-    _db_debug_print(db_fetch_all())
+    _db_debug_print(db_fetch_all_tagless())
     print()
     #_db_debug_print(db_fetch_all())
     #_db_debug_print(db_fetch_set(None,None,None,None))
@@ -568,9 +584,9 @@ def _db_debug():
     db_delete_transaction_tags(5,["Commute"])
     db_delete_transaction_tags(7,["Bunga"])
     db_delete_transaction_tags(11,["Fast Food"])
-    _db_debug_print(db_fetch_all())
+    _db_debug_print(db_fetch_all_tagless())
     print()
-    return
+
     db_delete_transaction_tags(9,["Subscription","Entertainment"])
     _db_debug_print(db_fetch_all())
     print()
@@ -579,6 +595,8 @@ def _db_debug():
     _db_debug_print(db_fetch_all())
     print()
     
+    _db_debug_print(db_fetch_tags())
+    print()
     db_add_transaction_tags(1,["Howdy"])
     db_add_transaction_tags(4,["Howdy"])
     db_add_transaction_tags(5,["Howdy"])
@@ -591,10 +609,13 @@ def _db_debug():
     db_add_transaction_tags(13,["Howdy"])
     _db_debug_print(db_fetch_all())
     print()
+    _db_debug_print(db_fetch_tags())
+    print()
     
     db_delete_tag(["howdy"])
     db_delete_tag(["Howdy"])
     _db_debug_print(db_fetch_all())
+    _db_debug_print(db_fetch_tags())
     
 
 
