@@ -156,10 +156,6 @@ def remove_transaction_by_index(index: int):
 #already stored in the DB. This does not change or delete any data. Only read and calculate.
 def report_income_vs_expenses(start_date: str | None = None,
                               end_date: str | None = None) -> dict:
-    """
-    Returns {'income': float, 'expenses': float, 'net': float}
-    Filters by inclusive date range if start/end given as 'YYYY-MM-DD'.
-    """
     from datetime import datetime
     sd = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None
     ed = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else None
