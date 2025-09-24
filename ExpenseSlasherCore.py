@@ -1,3 +1,12 @@
+# PROGRAM:         Expense Slasher Core Runnner
+# PURPOSE:         This program is the entry point and orchestration layer for the Expense Slasher application.
+# INPUT:           This program takes user input via the CLI for managing financial transactions.
+# PROCESS:         Actions include adding, viewing, and deleting transactions, as well as calculating totals.
+# OUTPUT:          Outputs are displayed in the CLI, showing transaction details and summaries.
+# HONOR CODE:  On my honor, as an Aggie, I have neither given nor received unauthorized
+#                               aid on this academic work.
+
+
 #!/usr/bin/env python3
 
 """
