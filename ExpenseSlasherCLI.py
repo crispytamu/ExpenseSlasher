@@ -11,9 +11,12 @@ Requirements:
 
 import os
 from datetime import datetime
-
+from collections import defaultdict, Counter
+from datetime import datetime
 
 # Calculation Functions
+
+
 def total_income(transactions):
     return sum(float(t["amount"]) for t in transactions if t["type"] == "income")
 
@@ -55,17 +58,112 @@ def remove_transaction_by_index(index):
     save_transactions(txns)
     return True, removed
 
-# For CLI
+
+# ---------------- Reports Menu ---------------
+def show_reports_menu():
+    while True:
+        print("\n=== Reports ===")
+        print("1) Total income vs. total expenses")
+        print("2) Total expenses by category")
+        print("3) Monthly breakdown (income, expenses, net)")
+        print("4) Back")
+        choice = input("Choose: ").strip()
+
+        if choice == "1":
+            report_income_vs_expenses()
+        elif choice == "2":
+            report_expenses_by_category()
+        elif choice == "3":
+            report_monthly_breakdown()
+        elif choice == "4":
+            break
+        else:
+            print("Invalid choice. Try again.")
 
 
+def report_income_vs_expenses():
+    # Load fresh each time in case data changed
+    txns = load_transactions()
+    inc = total_income(txns)
+    exp = total_expenses(txns)
+    net = inc - exp
+
+    print("\n--- Total Income vs. Total Expenses ---")
+    print(f"Total Income : ${inc:,.2f}")
+    print(f"Total Expense: ${exp:,.2f}")
+    print(f"Net          : ${net:,.2f}")
+    if inc > 0:
+        print(f"Expense / Income: {(exp / inc) * 100:,.2f}%")
+    elif exp > 0:
+        print("Expense / Income: ∞ (no income yet)")
+    else:
+        print("No transactions yet.")
+
+
+def report_expenses_by_category():
+    from collections import defaultdict
+
+    txns = load_transactions()
+    by_cat = defaultdict(float)
+
+    for t in txns:
+        if str(t.get("type", "")).lower() == "expense":
+            cat = (t.get("category") or "").strip() or "Uncategorized"
+            try:
+                amt = float(t.get("amount", 0))
+            except (TypeError, ValueError):
+                amt = 0.0
+            by_cat[cat] += amt
+
+    print("\n--- Total Expenses by Category ---")
+    if not by_cat:
+        print("(no expenses found)")
+        return
+
+    # sorted largest first
+    rows = sorted(by_cat.items(), key=lambda kv: kv[1], reverse=True)
+    cat_width = max(12, min(28, max(len(k) for k, _ in rows)))
+    print(f"{'Category'.ljust(cat_width)}  Total")
+    print(f"{'-'*cat_width}  {'-'*12}")
+    for cat, total in rows:
+        print(f"{cat.ljust(cat_width)}  ${total:,.2f}")
+
+
+def _ym(dstr):  # "2025-09-18" -> "2025-09"
+    return datetime.strptime(dstr, "%Y-%m-%d").strftime("%Y-%m")
+
+
+def report_monthly_breakdown():
+    txns = load_transactions()
+    buckets = defaultdict(lambda: {"income": 0.0, "expense": 0.0})
+    for t in txns:
+        ym = _ym(t["date"])
+        amt = float(t["amount"])
+        if t["type"] == "income":
+            buckets[ym]["income"] += amt
+        elif t["type"] == "expense":
+            buckets[ym]["expense"] += amt
+    rows = sorted(buckets.items())  # by year-month
+    print("\n------ Monthly Breakdown (Income | Expense | Net) ------")
+    if not rows:
+        print("(no transactions)")
+        return
+    print(" Month          Income           Expense          Net")
+    print("---------------------------------------------------------")
+    for ym, v in rows:
+        net = v["income"] - v["expense"]
+        print(
+            f"{ym}  ${v['income']:>13,.2f}  ${v['expense']:>13,.2f}  ${net:>13,.2f}")
+
+
+# ---------------- CLI Menu ----------------
 def menu():
     while True:
-        print("\n=== Exspense Slasher Core ===")
+        print("\n=== Expense Slasher Core ===")
         print("1) Add transaction")
         print("2) Show all transactions")
-        print("3) Show summary")
-        print("4) Show net value")  # Curtis
-        print("5) Remove a transaction")  # Pablo Adding
+        print("3) Remove a transaction")
+        print("4) Reports Menu")
         print("0) Exit")
 
         choice = input("Choose: ").strip()
@@ -88,17 +186,7 @@ def menu():
             for t in txns:
                 print(t)
 
-        elif choice == "3":
-            txns = load_transactions()
-            print(f"Total Income : ${total_income(txns):.2f}")
-            print(f"Total Expense: ${total_expenses(txns):.2f}")
-            print(f"Net Savings  : ${net_savings(txns):.2f}")
-
-        elif choice == "4":
-            txns = load_transactions()
-            print(f"Net Value :${net_value(txns):.2f}")
-
-        elif choice == "5":  # Add Modifications
+        elif choice == "3":  # Add Modifications
             txns = load_transactions()
             list_transactions_print(txns)
             if not txns:
@@ -114,6 +202,9 @@ def menu():
             else:
                 total = info
                 print(f"Invalid index. Must be between 0 and {total-1}.")
+
+        elif choice == "4":  # Reports Menu
+            show_reports_menu()
 
         elif choice == "0":
             print("Goodbye!")
