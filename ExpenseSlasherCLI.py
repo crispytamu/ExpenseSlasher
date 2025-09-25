@@ -1,3 +1,12 @@
+# PROGRAM:         Expense Slasher CLI
+# PURPOSE:         This program is the entry point and orchestration layer for the Expense Slasher application.
+# INPUT:           This program takes user input via the CLI for managing financial transactions.
+# PROCESS:         Actions include adding, viewing, and deleting transactions, as well as calculating totals.
+# OUTPUT:          Outputs are displayed in the CLI, showing transaction details and summaries.
+# HONOR CODE:      On my honor, as an Aggie, I have neither given nor received unauthorized
+#                  aid on this academic work.
+
+
 #!/usr/bin/env python3
 """
 Expense Slasher CLI Functionality
@@ -12,7 +21,6 @@ Requirements:
 import os
 from datetime import datetime
 from collections import defaultdict, Counter
-from datetime import datetime
 
 # Calculation Functions
 
@@ -28,13 +36,9 @@ def total_expenses(transactions):
 def net_savings(transactions):
     return total_income(transactions) - total_expenses(transactions)
 
-# <-- Adding this helper
-
 
 def net_value(transactions):
     return net_savings(transactions)
-
-# List with index for remove flow "Curtis and Pablo"
 
 
 def list_transactions_print(transactions):
@@ -173,7 +177,12 @@ def menu():
                 "Date (YYYY-MM-DD, blank=today): ").strip() or datetime.today().strftime("%Y-%m-%d")
             description = input("Description: ").strip()
             category = input("Category (e.g. food, rent, utilities): ").strip()
-            amount = input("Amount: ").strip()
+            try:
+                # Will raise ValueError if not numeric
+                amount = float(input("Amount: ").strip())
+            except ValueError:
+                print("Amount must be numeric.")
+                continue
             ttype = input("Type (income/expense): ").strip().lower()
             try:
                 add_transaction(date, description, category, amount, ttype)
