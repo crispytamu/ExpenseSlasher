@@ -96,7 +96,7 @@ def add_transaction(date: str, description: str, category: str, amount, ttype: s
     if not ok:
         print("DB insert failed.")
 
-#Fethch all transactions from DB and convert to list of dicts for CLI
+#Fetch all transactions from DB and convert to list of dicts for CLI
 def load_transactions() -> List[Dict]:
     rows = db.db_fetch_all()  # list of tuples (rowid, date, desc, amnt, tags)
     out: List[Dict] = []
@@ -151,27 +151,6 @@ def remove_transaction_by_index(index: int):
     else:
         # deletion not implemented, return count
         return False, len(txns)
-
-#Report function generates simple financial summaries from the transactions
-#already stored in the DB. This does not change or delete any data. Only read and calculate.
-def report_income_vs_expenses(start_date: str | None = None,
-                              end_date: str | None = None) -> dict:
-    from datetime import datetime
-    sd = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None
-    ed = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else None
-
-    income = expenses = 0.0
-    for t in load_transactions():
-        d = datetime.strptime(t["date"], "%Y-%m-%d").date()
-        if sd and d < sd: 
-            continue
-        if ed and d > ed:
-            continue
-        if t["type"] == "income":
-            income += float(t["amount"])
-        else:
-            expenses += float(t["amount"])
-    return {"income": income, "expenses": expenses, "net": income - expenses}
 
 
 # ---------------- Bind Core into CLI ----------------
