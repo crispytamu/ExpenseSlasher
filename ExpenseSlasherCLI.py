@@ -1,8 +1,11 @@
 # PROGRAM:         Expense Slasher CLI
-# PURPOSE:         This program is the entry point and orchestration layer for the Expense Slasher application.
-# INPUT:           This program takes user input via the CLI for managing financial transactions.
+# PURPOSE:         CLI personal finance tracker that records income and expenses, lists and removes
+#                  transactions by index, and generates summary reports (income vs. expenses, expenses
+#                  by category, and monthly breakdown). Computes totals and net savings and prints
+#                  results in a readable table.
+# INPUT:           User inputs transactions (date, description, category, amount, type) via CLI prompts.
 # PROCESS:         Actions include adding, viewing, and deleting transactions, as well as calculating totals.
-# OUTPUT:          Outputs are displayed in the CLI, showing transaction details and summaries.
+# OUTPUT:          Outputs are displayed in the CLI, showing transaction details, summaries, and reports.
 # HONOR CODE:      On my honor, as an Aggie, I have neither given nor received unauthorized
 #                  aid on this academic work.
 
