@@ -337,33 +337,32 @@ def db_delete_transaction_tags (transactionID: int, tags: list[str] = None) -> b
     if tags is not None:
         try:
             for tag in tags:
-                for tag in tags:
-                    #checks for entries in joint table with tag name
-                    CURSOR.execute("SELECT ROWID FROM tags WHERE name = ?",(tag,))
-                    res = CURSOR.fetchone()
+                #checks for entries in joint table with tag name
+                CURSOR.execute("SELECT ROWID FROM tags WHERE name = ?",(tag,))
+                res = CURSOR.fetchone()
+                
+                #if tag exists, remove relational entry
+                if res:
+                    tag_id = res[0]
                     
-                    #if tag exists, remove relational entry
-                    if res:
-                        tag_id = res[0]
-                        
+                    CURSOR.execute("""
+                        DELETE FROM transactions_tags
+                        WHERE transaction_id = ? AND tag_id = ?
+                    """,(transactionID,tag_id))
+                    
+                    #check if tag has no other transactions relating to it
+                    CURSOR.execute("""
+                        SELECT COUNT(*) FROM transactions_tags
+                        WHERE tag_id = ?
+                        """,(tag_id,))
+                    otherLinks = CURSOR.fetchone()[0]
+                    
+                    #if no other trans, prune tag from tag table
+                    if otherLinks == 0:
                         CURSOR.execute("""
-                            DELETE FROM transactions_tags
-                            WHERE transaction_id = ? AND tag_id = ?
-                        """,(transactionID,tag_id))
-                        
-                        #check if tag has no other transactions relating to it
-                        CURSOR.execute("""
-                            SELECT COUNT(*) FROM transactions_tags
-                            WHERE tag_id = ?
+                            DELETE FROM tags
+                            WHERE ROWID = ?
                             """,(tag_id,))
-                        otherLinks = CURSOR.fetchone()[0]
-                        
-                        #if no other trans, prune tag from tag table
-                        if otherLinks == 0:
-                            CURSOR.execute("""
-                                DELETE FROM tags
-                                WHERE ROWID = ?
-                                """,(tag_id,))
             DB.commit()
             print(f"Tags for transaction ID {transactionID} removed successfully")
             return True
