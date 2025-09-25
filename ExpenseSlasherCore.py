@@ -96,7 +96,7 @@ def add_transaction(date: str, description: str, category: str, amount, ttype: s
     if not ok:
         print("DB insert failed.")
 
-#Fethch all transactions from DB and convert to list of dicts for CLI
+#Fetch all transactions from DB and convert to list of dicts for CLI
 def load_transactions() -> List[Dict]:
     rows = db.db_fetch_all()  # list of tuples (rowid, date, desc, amnt, tags)
     out: List[Dict] = []
