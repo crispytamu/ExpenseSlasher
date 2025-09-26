@@ -29,22 +29,67 @@ from collections import defaultdict, Counter
 
 
 def total_income(transactions):
+    """Compute the total of all income transactions.
+
+    Args:
+        transactions: A list of transactions.
+
+    Returns:
+        The sum of amounts for transactions where `type == "income"`.
+    """
     return sum(float(t["amount"]) for t in transactions if t["type"] == "income")
 
 
 def total_expenses(transactions):
+    """Compute the total of all expense transactions.
+
+    Args:
+        transactions: A list of transactions.
+
+    Returns:
+        The sum of amounts for transactions where `type == "expense"`.
+    """
     return sum(float(t["amount"]) for t in transactions if t["type"] == "expense")
 
 
 def net_savings(transactions):
+    """Calculate net savings (income minus expenses).
+
+    Args:
+        transactions: A list of transactions.
+
+    Returns:
+        Net savings value (total income - total expenses).
+    """
     return total_income(transactions) - total_expenses(transactions)
 
 
 def net_value(transactions):
+    """Alias for :func:`net_savings` to support future extensions.
+
+    Currently returns the same value as `net_savings`. Kept separate to allow
+    evolving the concept of "net value" (e.g., include assets/liabilities).
+
+    Args:
+        transactions: A list of transactions.
+
+    Returns:
+        Net value computed from transactions.
+    """
     return net_savings(transactions)
 
 
 def list_transactions_print(transactions):
+    """Print a tabular view of transactions with a stable index.
+
+    The index shown here is used by `remove_transaction_by_index`.
+
+    Args:
+        transactions: A list of transactions.
+
+    Side Effects:
+        Prints to stdout.
+    """
     if not transactions:
         print("(no transactions found)")
         return
@@ -54,10 +99,16 @@ def list_transactions_print(transactions):
         print(
             f"{i:2d}| {t['date']:<10} | {t['description'][:26]:<26} | {t['category'][:14]:<14} | {t['amount']:<8} | {t['type']}")
 
-# NEW remove by index (shown on list) "Curtis and Pablo"
-
 
 def remove_transaction_by_index(index):
+    """Remove a transaction by its index in the list.
+    Args:
+        index: The index of the transaction to remove.
+    Returns:
+        A tuple (success, info) where success is True if removal succeeded,
+        and info is either the removed transaction (if success) or the total
+        number of transactions (if failure).
+    """
     txns = load_transactions()
     if index < 0 or index >= len(txns):
         return False, len(txns)
@@ -89,7 +140,13 @@ def show_reports_menu():
 
 
 def report_income_vs_expenses():
-    # Load fresh each time in case data changed
+    """Print totals of income, expenses, and net with a simple ratio.
+
+    Loads transactions fresh to reflect any changes before the report.
+
+    Side Effects:
+        Prints a formatted report to stdout.
+    """
     txns = load_transactions()
     inc = total_income(txns)
     exp = total_expenses(txns)
@@ -108,6 +165,15 @@ def report_income_vs_expenses():
 
 
 def report_expenses_by_category():
+    """Print total expenses grouped by category, sorted descending.
+
+    Rules:
+        - Non-expense transactions are ignored.
+        - Blank/missing categories are labeled 'Uncategorized'.
+
+    Side Effects:
+        Prints a formatted report to stdout.
+    """
     from collections import defaultdict
 
     txns = load_transactions()
@@ -136,11 +202,17 @@ def report_expenses_by_category():
         print(f"{cat.ljust(cat_width)}  ${total:,.2f}")
 
 
-def _ym(dstr):  # "2025-09-18" -> "2025-09"
+def _ym(dstr):
+    """Convert a full date string (YYYY-MM-DD) to a year-month key (YYYY-MM)."""
     return datetime.strptime(dstr, "%Y-%m-%d").strftime("%Y-%m")
 
 
 def report_monthly_breakdown():
+    """Print a monthly breakdown of income, expenses, and net.
+
+    Side Effects:
+        Prints a formatted report to stdout.
+    """
     txns = load_transactions()
     buckets = defaultdict(lambda: {"income": 0.0, "expense": 0.0})
     for t in txns:
@@ -165,6 +237,7 @@ def report_monthly_breakdown():
 
 # ---------------- CLI Menu ----------------
 def menu():
+    """Interactive CLI menu for Expense Slasher."""
     while True:
         print("\n=== Expense Slasher Core ===")
         print("1) Add transaction")
