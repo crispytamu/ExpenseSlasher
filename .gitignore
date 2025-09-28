@@ -2,7 +2,7 @@
 #such as .db files and .log files
 
 #Ignoring db files
-*.db
+
 
 #Ignoring .log files
 *.log
