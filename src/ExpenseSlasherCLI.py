@@ -249,8 +249,22 @@ def menu():
         choice = input("Choose: ").strip()
 
         if choice == "1":
-            date = input(
-                "Date (YYYY-MM-DD, blank=today): ").strip() or datetime.today().strftime("%Y-%m-%d")
+            # Date must be YYYY-MM-DD or blank for today
+            while True:
+                date = input(
+                    "Date (YYYY-MM-DD, blank=today): ").strip() or datetime.today().strftime("%Y-%m-%d")
+                if not date:
+                    date = datetime.today().strftime("%Y-%m-%d")
+                    break
+                try:
+                    # Validates format and real calendar date
+                    parsed_date = datetime.strptime(date, "%Y-%m-%d")
+                    date = parsed_date.strftime("%Y-%m-%d")  # normalize
+                    break
+                except ValueError:
+                    print(
+                        "Invalid date format or date. Please use YYYY-MM-DD and real calendar date.")
+
             description = input("Description: ").strip()
             category = input("Category (e.g. food, rent, utilities): ").strip()
             try:
