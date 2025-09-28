@@ -1,6 +1,6 @@
 
-####Turn run Expense Slasher. Navigate to director that holds the 3 files. 
-####run python.exe .\ExpenseSlasherCore.py
+####To run Expense Slasher. Navigate to root directory. 
+####run python.exe .\src\ExpenseSlasherCore.py
 
 Expense Slasher is a simple personal finance tracker. It records transactions (income and expenses)
 stores them in SQLite, and offers summaries on totals and net savings.
