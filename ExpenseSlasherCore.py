@@ -112,6 +112,7 @@ def _make_tags(category: Optional[str]) -> list[str]:
 
 # ---------------- Core DB-backed API ----------------
 
+#Bridge between core and db_handler. Add a transaction to the DB
 def add_transaction(date: str, description: str, category: str, amount, ttype: str):
     """
     Bridge to db_handler to add a transaction to the DB.
@@ -146,6 +147,7 @@ def add_transaction(date: str, description: str, category: str, amount, ttype: s
     if not ok:
         print("DB insert failed.")
 
+#fetch all transactions from DB and convert to list of dicts for CLI
 def load_transactions() -> List[Dict]:
     """
     Fetch all transactions from the DB and convert to a list of dictionaries.
@@ -173,6 +175,7 @@ def load_transactions() -> List[Dict]:
         })
     return out
 
+#Compute total income, expenses, net savings, net value from list of transactions
 def total_income(transactions: List[Dict]) -> float:
     """
     Calculate the total income from a list of transactions.
