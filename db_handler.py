@@ -1,3 +1,22 @@
+# PROGRAM:         Expense Slasher Database Handler
+# PURPOSE:         This program handles direct interfacing with the SQL database
+#                   allowing the Core program to handle orchestration.
+# INPUT:           Primary input for this program is transaction details:
+#                   Database name: string
+#                   transaction date: string (YYYY-MM-DD)
+#                   transaction description: string
+#                   transaction ammount: float
+#                   transaction tags: list of strings
+#                   transaction id: int.
+# PROCESS:         Data is assumed validated from user side in terms of formatting
+#                   SQL queries are then created and executed to run a variety 
+#                   of CRUD operations on database
+# OUTPUT:          Outputs are lists of transaction details or boolean values
+#                   representing a function's ability to execute certain
+#                   database functions.
+# HONOR CODE:      On my honor, as an Aggie, I have neither given nor received 
+#                   unauthorized aid on this academic work.
+
 #Imports
 import sqlite3 #SQLite3 for Database
 import sys #sys for importing CLI arguments
@@ -22,6 +41,7 @@ def db_init(db_name: str = "data.db"):
     #Building global variables
     global DB
     global CURSOR
+    #actually builds database file
     DB = sqlite3.connect(db_name)
     CURSOR = DB.cursor()
     
@@ -57,27 +77,34 @@ def db_init(db_name: str = "data.db"):
                 UNIQUE (transaction_id, tag_id)
             );
         """)
-        DB.commit()
+        DB.commit() #commit changes to database
     except sqlite3.OperationalError as e:
+        #prints error message if unable to create database tables
         print("Error Creating Tables...")
         print(e)
 
 def db_fetch_all () -> list[tuple[int,str,str,float,str]]:
+    """Fetches all transactions from database, linking them with the appropriate
+    tags
+
+    Returns:
+        list[tuple[int,str,str,float,str]]: list of transaction details
+    """    
     fetch = []
-    """
-        First we grab all the cols in transaction table and a col which lists
-        all the Tag names in a list related to a single transaction
-        
-        then we merge the joint table to the trans table, using the
-        transaction ids as the common id
-        
-        we then add the tags table to the joint table, using the tag ids as the
-        common id
-        
-        finally, grouping the entries by rowid will allow the group concat to
-        merge duplicate transaction records' tags into a single entry with a
-        list of its matching tags and outputs that single transaction record
-    """
+#        First we grab all the cols in transaction table and a col which lists
+#        all the Tag names in a list related to a single transaction
+#        
+#        then we merge the joint table to the trans table, using the
+#        transaction ids as the common id
+#        
+#        we then add the tags table to the joint table, using the tag ids as the
+#        common id
+#       
+#        finally, grouping the entries by rowid will allow the group concat to
+#        merge duplicate transaction records' tags into a single entry with a
+#        list of its matching tags and outputs that single transaction record
+
+    #db query to grab and link tables
     CURSOR.execute("""
         SELECT T.ROWID, T.date, T.desc, T.amnt, GROUP_CONCAT(Tag.name) as tags
         FROM transactions as T
@@ -85,7 +112,9 @@ def db_fetch_all () -> list[tuple[int,str,str,float,str]]:
         LEFT JOIN tags as Tag On JT.tag_id = Tag.ROWID
         GROUP BY T.ROWID
         """)
+    #pulls results from cursor
     fetch = CURSOR.fetchall()
+    #returns fetched data
     return fetch
   
 def db_fetch_all_tagless () -> list[tuple[int,str,str,float]]:
@@ -96,6 +125,9 @@ def db_fetch_all_tagless () -> list[tuple[int,str,str,float]]:
         list[tuple[int,str,str,float]]: list of tuples representing transactions
     """    
     fetch = []
+    #SQL query grabs all data in transaction table
+    #for row in iterates through each entry pulled by SQL query and appends to 
+    #fetch object
     for row in CURSOR.execute("""
             SELECT ROWID, date, desc, amnt 
             FROM transactions 
@@ -119,11 +151,14 @@ def db_add_transaction (date: str, desc: str, amnt: float, tags:list[str]) -> bo
     """    
     try:
         #insert to transaction table
+        #format data for parametric SQL query
         entryData = (date,desc,amnt)
+        #executes sql query
         CURSOR.execute("""
             INSERT INTO transactions (date,desc,amnt)
             VALUES (?,?,?)
         """, entryData)
+        #grabs transaction id as it is the last one in table
         trans_id = CURSOR.lastrowid
         
         #insert to tags table
@@ -143,8 +178,11 @@ def db_add_transaction (date: str, desc: str, amnt: float, tags:list[str]) -> bo
                 INSERT INTO transactions_tags (transaction_id,tag_id)
                 VALUES (?,?)
             """, (trans_id,tag_id))
+        #commit changes to db
         DB.commit()
     except sqlite3.Error as e:
+        #if error with committing, prints out error that occured and rolls back
+        #any attempted changes
         print("Error writing entry: ",e)
         DB.rollback()
         return False
@@ -211,19 +249,22 @@ def db_fetch_set (date:str = None,
             else: #invalid tuple symbol results in exact search
                 query += " and amnt = ?"
             params.append(amnt[1])
-    if tags:
+    if tags: #dymaically appends tags for parametric sql query
         tmp = ','.join(['?'] * len(tags))
         query += f" AND Tag.name IN ({tmp})"
         params.extend(tags)
-        
+    
+    #additional condition to organize results by rowid    
     query += """
         GROUP BY
             T.ROWID
-    """    
+    """
+    #attempt query execution and return data if successful    
     try:
         CURSOR.execute(query,tuple(params))
         return CURSOR.fetchall()
     except sqlite3.Error as e:
+        #catches error and prints error to console
         print("DB Error: ",e)
 
 def db_edit_transaction (transactionID: int,
@@ -243,10 +284,12 @@ def db_edit_transaction (transactionID: int,
 
     Returns:
         bool: True on successful edit, false on no edit made/unsuccessful edit
-    """    
+    """ 
+    #empty objects for parametric query   
     commands = []
     params = []
     
+    #dyamically appends criteria if present
     if date is not None:
         commands.append("date = ?")
         params.append(date)
@@ -256,23 +299,30 @@ def db_edit_transaction (transactionID: int,
     if amnt is not None:
         commands.append("amnt = ?")
         params.append(amnt)
-        
+    #detects if no criteria to edit are passed and exits gracefully    
     if not commands:
         print("No data to update.")
         return False
     
+    #attempts to execute update query
     try:
+        #dynamically appends the previously generated commands to query
         query = f"""UPDATE transactions
                    SET {",".join(commands)}
                    WHERE ROWID = ?
                 """
         params.append(transactionID)
         
+        #execute query
         CURSOR.execute(query,tuple(params))
+        #commit changes
         DB.commit()
         print(f"Transaction with ID {transactionID} updated successfully!")
         return True
     except sqlite3.Error as e:
+        #catches errors with updating transaction, prints error to console, 
+        #rolls back changes, and informs function caller of failed edit via
+        #false return value
         print("Error updating transaction: ",e)
         DB.rollback()
         return False
@@ -287,7 +337,8 @@ def db_add_transaction_tags (transactionID: int, tags: list[str] = None) -> bool
     Returns:
         bool: returns True on successful/duplicate addition,
               false on no/unsuccessful edit
-    """    
+    """ 
+    #checks for empty tag list   
     if tags is not None:
         try:
             for tag in tags:
@@ -307,15 +358,19 @@ def db_add_transaction_tags (transactionID: int, tags: list[str] = None) -> bool
                     INSERT OR IGNORE INTO transactions_tags (transaction_id, tag_id)
                     VALUES (?,?)
                 """, (transactionID,tag_id))
-               
+            #attempt to commit to database
             DB.commit()
             print(f"Tags for Transaction ID: {transactionID} added successfully!")
             return True
         except sqlite3.Error as e:
+            #gracefully catches any error with edit, rolls back changes, prints
+            #error to console, and informs function caller of failed edit with
+            #false return value
             print("Error adding tag: ",e)
             DB.rollback()
             return False 
     else:
+        #if no tags in passed list, return false to funciton caller
         print("No tags to add")
         return False
 
@@ -351,6 +406,7 @@ def db_delete_transaction_tags (transactionID: int, tags: list[str] = None) -> b
                     """,(transactionID,tag_id))
                     
                     #check if tag has no other transactions relating to it
+                    #AKA orphaned tags
                     CURSOR.execute("""
                         SELECT COUNT(*) FROM transactions_tags
                         WHERE tag_id = ?
@@ -363,13 +419,19 @@ def db_delete_transaction_tags (transactionID: int, tags: list[str] = None) -> b
                             DELETE FROM tags
                             WHERE ROWID = ?
                             """,(tag_id,))
+            #attempt to commit changes
             DB.commit()
             print(f"Tags for transaction ID {transactionID} removed successfully")
             return True
         except sqlite3.Error as e:
+            #gracefully catch any error, roll back changes, print error to 
+            #console, and inform function caller of failed remove via false
+            #return value
             print("Error removing tags: ",e)
+            DB.rollback()
             return False    
     else:
+        #returns false if no tags passed to function
         print("No passed tags to remove")
         return False
 
@@ -386,6 +448,7 @@ def db_delete_transaction (transactionID: int = None) -> bool:
     #find entry in transactions table
     if transactionID is not None:
         try:
+            #SQL query to find transaction via transaction id
             CURSOR.execute ("""
                 SELECT ROWID 
                 FROM transactions
@@ -410,10 +473,13 @@ def db_delete_transaction (transactionID: int = None) -> bool:
                 """)
                 orphaned_tags = CURSOR.fetchall()
                 
+                #if orphaned tags exist, prune tag table of those entries
                 if orphaned_tags:
                     print("Orphaned tags found, pruning...")
+                    #creates list of orphaned tag ids
                     orphaned_ids = [tag[0] for tag in orphaned_tags]
                     
+                    #creates object for parametric queries
                     tmp = ','.join('?' * len(orphaned_ids))
                     CURSOR.execute(f"""
                         DELETE
@@ -422,17 +488,23 @@ def db_delete_transaction (transactionID: int = None) -> bool:
                         IN ({tmp})
                     """,tuple(orphaned_ids))
                 
+                #attempt to commit changes
                 DB.commit()
                 print(f"Transaction ID {transactionID} has bee successfully deleted")
                 return True
             else:
+                #if no transaction with passed id found, return false
                 print(f"No transaction with ID {transactionID} found")
                 return False
         except sqlite3.Error as e:
+            #gracefully catches any error, rolls back changes, prints error to 
+            #console, and informs function caller of failed edit via false
+            #return value
             print("Error deleting transaction: ",e)
             DB.rollback()
             return False
     else:
+        #if no transaction id provided, return false
         print("No transaction ID provided")
         return False
         
@@ -447,8 +519,11 @@ def db_delete_tag (tags: list[str] = None) -> bool:
         bool: returns true when ALL tags in list have been removed
             returns false if atleast one removal fails, empty tag list, or db error
     """
+    #checks for empty list of passed tags
     if tags is not None:
         try:
+            #loop through list of tags and attempt to delete them from tag table
+            #in SQL db
             for tag in tags:
                 CURSOR.execute("""
                     DELETE
@@ -456,14 +531,22 @@ def db_delete_tag (tags: list[str] = None) -> bool:
                     WHERE name = ?
                     """, (tag,))
             
+            #since transactions can exist without tags, unlike tags that can NOT
+            #exist without a transaction, no additional pruning is required
+            
+            #attempt to commit changes
             DB.commit()
             print("Tags successfully deleted")
             return True
         except sqlite3.Error as e:
+            #gracefully catches any error, rolls back attempted changes, prints
+            #error to console, and informs function caller of failed change via
+            #false return data
             print("Error deleting tags: ",e)
             DB.rollback()
             return False
     else:
+        #returns false if passed tag list is empty
         print("Tag list is empty")
         return False
 
@@ -473,17 +556,21 @@ def db_fetch_tags () -> list[tuple[int,str]]:
     Returns:
         list[tuple[int,str]]: list of tuples representing tags and their ids
     """    
+    #build empty object to append tags to
     fetch = []
     
+    #executes SQL query and loops through each object in list it returns
     for row in CURSOR.execute("""
             SELECT ROWID, name
             FROM tags
             ORDER BY ROWID
         """):
+        #appends result from each row of query's return
         fetch.append(row)
     return fetch
 
-#TODO    
+#TODO
+#not commented as these functions are still in development    
 def db_bulk_add_transaction (transaction_list:list[str,str,float,list[str]] = None) -> bool:
     """bulk adds transactions from a list of transactions
 
@@ -542,23 +629,40 @@ def db_bulk_delete_tag (transaction_list: list[int] = None, tags: list[str] = No
     pass
 
 def _db_debug_print (E):
+    """private, helper function to print db data in easy to read format for
+    internal debugging purposes. not intended to be called outside of db_handler
+
+    Args:
+        E (iterable): list object to be printed
+    """  
+    #iterates through each object of E and prints on new lines  
     for i in E:
         print(i)
         
 def _db_debug():
+    """private, helper function to test db functionality for internal debugging
+    purposes. not intented to be called outside of db_handler
+    """
+    #clears previous db    
     if os.path.exists("debug.db"):
         os.remove("debug.db")
     
+    #inits db
     db_init("debug.db")
+    
+    #tests adding transactions
     db_add_transaction("2000-01-05","McDonalds",12.99,["Fast Food"])
     db_add_transaction("2000-03-19","HEB",249.99,["Groceries","Extra"])
     db_add_transaction("2001-09-13","Taco Bell", 11.46,["Fast Food"])
     _db_debug_print(db_fetch_all())
     print()
     
+    #tests deleting transaction
     db_delete_transaction(2)
     _db_debug_print(db_fetch_all())
     print()
+    
+    #adding more transactions for testing
     db_add_transaction("2000-01-20", "Burger King", 15.50, ["Fast Food", "Lunch"])
     db_add_transaction("2000-02-05", "Exxon Gas Station", 45.00, ["Gas", "Commute"])
     db_add_transaction("2000-04-10", "Amazon", 8.99, [])
@@ -571,15 +675,18 @@ def _db_debug():
     db_add_transaction("2001-01-01", "ZeroTag4", 100.00, [])
     _db_debug_print(db_fetch_all_tagless())
     print()
-    #_db_debug_print(db_fetch_all())
-    #_db_debug_print(db_fetch_set(None,None,None,None))
+    
+    #tests mutation of transaction records
+    #transaction details
     db_edit_transaction(4,amnt=69.69)
     db_edit_transaction(6,desc="Amazon-Weekly shipment")
+    #transaction tags
     db_add_transaction_tags(6,["Travel","Out-Of-Country"])
     db_add_transaction_tags(10,["Fast Food"])
     db_add_transaction_tags(13,["Date Night"])
     _db_debug_print(db_fetch_all())
     print()
+    #tests removal of transaction tags
     db_delete_transaction_tags(5,["Commute"])
     db_delete_transaction_tags(7,["Bunga"])
     db_delete_transaction_tags(11,["Fast Food"])
@@ -589,11 +696,14 @@ def _db_debug():
     db_delete_transaction_tags(9,["Subscription","Entertainment"])
     _db_debug_print(db_fetch_all())
     print()
+    
+    #test deletion of entire transaction records
     db_delete_transaction(3)
     db_delete_transaction(6)
     _db_debug_print(db_fetch_all())
     print()
     
+    #test adding tags to transactions
     _db_debug_print(db_fetch_tags())
     print()
     db_add_transaction_tags(1,["Howdy"])
@@ -611,6 +721,7 @@ def _db_debug():
     _db_debug_print(db_fetch_tags())
     print()
     
+    #test deletion of tags
     db_delete_tag(["howdy"])
     db_delete_tag(["Howdy"])
     _db_debug_print(db_fetch_all())
@@ -618,17 +729,22 @@ def _db_debug():
     
 
 
-
+#File use detection
 if __name__ == "__main__":
+    #file allowed to be called directly if --debug flag is used
     if len(sys.argv) > 1:
         if sys.argv.count("--debug") == 1:
+            #if debug flag detected, run internal debug testing method
             print("Starting db_handler in debug mode")
             _db_debug()
         else:
             print("Unrecognized flags, please use debug flags when executing")
     else:
+        #catches if module is run individually without intention of use in
+        #debug mode
         print("Improper Module Use. Please import with \"import db_handler.py\"")
 else:
+    #informs console of proper use and initializes database for use
     print("Loading database handler module...")
     db_init()
     print("Database handler initialized")
