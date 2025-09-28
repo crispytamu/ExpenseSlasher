@@ -41,8 +41,9 @@ def db_init(db_name: str = "data.db"):
     #Building global variables
     global DB
     global CURSOR
-    #actually builds database file
-    DB = sqlite3.connect(db_name)
+    #actually builds/connects to database file
+    
+    DB = sqlite3.connect("data/" + db_name)
     CURSOR = DB.cursor()
     
     #building db tables
