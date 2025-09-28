@@ -46,7 +46,7 @@ except ModuleNotFoundError as e:
 
 # Import ExpenseSlasherCLI as UI
 try:
-    import ExpenseSlasherCLI as cli  # must match your CLI filename
+    import ExpenseSlasherCLI as cli  #Must match ExpenseSlasherCLI.py and be in same folder
 except ModuleNotFoundError as e:
     print("ERROR: Could not import ExpenseSlasherCLI. Ensure 'ExpenseSlasherCLI.py' is alongside this file.")
     raise e
@@ -147,7 +147,7 @@ def add_transaction(date: str, description: str, category: str, amount, ttype: s
     if not ok:
         print("DB insert failed.")
 
-#fetch all transactions from DB and convert to list of dicts for CLI
+#Fetch all transactions from DB and convert to list of dicts for CLI
 def load_transactions() -> List[Dict]:
     """
     Fetch all transactions from the DB and convert to a list of dictionaries.
@@ -175,7 +175,8 @@ def load_transactions() -> List[Dict]:
         })
     return out
 
-#Compute total income, expenses, net savings, net value from list of transactions
+#Functions to computer total income, expenses, net savings, net value from list of transactions
+#Includes remote_transaction_by_index to delete a transaction by its index in the list
 def total_income(transactions: List[Dict]) -> float:
     """
     Calculate the total income from a list of transactions.
