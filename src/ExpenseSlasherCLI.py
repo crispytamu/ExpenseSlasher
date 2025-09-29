@@ -20,12 +20,13 @@ Requirements:
 • Categorize transactions (food, rent, utilities, entertainment, etc.)
 • Functions to calculate total income, total expenses, and net savings
 """
-
+# Imports
 import os
 from datetime import datetime
 from collections import defaultdict, Counter
 
-# Calculation Functions
+# --- Calculation Functions ---
+# Functions to compute totals for income, expenses, and net savings from a list of transactions.
 
 
 def total_income(transactions):
@@ -79,8 +80,11 @@ def net_value(transactions):
     return net_savings(transactions)
 
 
+# --- Transaction Listing and Removal ---
+# Functions to display transactions in a table and remove them by index.
+
 def list_transactions_print(transactions):
-    """Print a tabular view of transactions with a stable index.
+    """Print a tabular view of transactions with index for removal.
 
     The index shown here is used by `remove_transaction_by_index`.
 
@@ -117,8 +121,11 @@ def remove_transaction_by_index(index):
     return True, removed
 
 
-# ---------------- Reports Menu ---------------
+# --- Reports Menu and Reporting Functions ---
+# Functions to display a reports menu and generate summary reports.
+
 def show_reports_menu():
+    """Display the reports menu and handle user choices."""
     while True:
         print("\n=== Reports ===")
         print("1) Total income vs. total expenses")
@@ -140,7 +147,7 @@ def show_reports_menu():
 
 
 def report_income_vs_expenses():
-    """Print totals of income, expenses, and net with a simple ratio.
+    """Print totals of income, expenses, and net savings.
 
     Loads transactions fresh to reflect any changes before the report.
 
@@ -235,7 +242,9 @@ def report_monthly_breakdown():
             f"{ym}  ${v['income']:>13,.2f}  ${v['expense']:>13,.2f}  ${net:>13,.2f}")
 
 
-# ---------------- CLI Menu ----------------
+# --- CLI Menu ---
+# Main interactive menu for adding, viewing, and removing transactions, and accessing reports.
+
 def menu():
     """Interactive CLI menu for Expense Slasher."""
     while True:
@@ -248,7 +257,7 @@ def menu():
 
         choice = input("Choose: ").strip()
 
-        if choice == "1":
+        if choice == "1":  # Add Transaction
             # Date must be YYYY-MM-DD or blank for today
             while True:
                 date = input(
@@ -280,7 +289,7 @@ def menu():
             except ValueError:
                 print("Amount must be numeric.")
 
-        elif choice == "2":
+        elif choice == "2":  # Displays list of all transactions
             txns = load_transactions()
             for t in txns:
                 print(t)
@@ -311,6 +320,9 @@ def menu():
         else:
             print("Invalid choice.")
 
+
+# --- Program Entry Point ---
+# Starts the CLI menu when the script is run directly.
 
 if __name__ == "__main__":
     menu()
