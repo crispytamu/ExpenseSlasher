@@ -14,3 +14,4 @@ src/__pycache__
 *.docx
 *.zip
 #Ignoring files in data folder but retaining data folder itself
+data/data.db
