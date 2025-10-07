@@ -25,10 +25,51 @@ import os
 from datetime import datetime
 from collections import defaultdict, Counter
 
+
+# --- Normalization & validation helpers for reporting ---
+def _normalize_transaction(t: dict) -> dict | None:
+    """Return a cleaned transaction dict or None if unusable for reports."""
+    # normalize/validate type
+    typ = str(t.get("type", "")).strip().lower()
+    if typ not in {"income", "expense"}:
+        return None
+
+    # normalize/validate amount
+    try:
+        amt = float(str(t.get("amount", "")).strip())
+    except (TypeError, ValueError):
+        return None
+
+    # normalize/validate date (expect YYYY-MM-DD)
+    d = str(t.get("date", "")).strip()
+    try:
+        d = datetime.strptime(d, "%Y-%m-%d").strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+    # tidy fields
+    desc = (t.get("description") or "").strip()
+    cat = (t.get("category") or "").strip()
+    if cat.lower() == "food":
+        cat = "Food"
+
+    return {"date": d, "description": desc, "category": cat, "amount": amt, "type": typ}
+
+
+def _valid_transactions(transactions: list[dict]) -> tuple[list[dict], int]:
+    """Return (cleaned_txns, skipped_count)."""
+    cleaned, skipped = [], 0
+    for raw in transactions:
+        nt = _normalize_transaction(raw)
+        if nt is None:
+            skipped += 1
+        else:
+            cleaned.append(nt)
+    return cleaned, skipped
+
+
 # --- Calculation Functions ---
 # Functions to compute totals for income, expenses, and net savings from a list of transactions.
-
-
 def total_income(transactions):
     """Compute the total of all income transactions.
 
@@ -38,7 +79,8 @@ def total_income(transactions):
     Returns:
         The sum of amounts for transactions where `type == "income"`.
     """
-    return sum(float(t["amount"]) for t in transactions if t["type"] == "income")
+    txns, _ = _valid_transactions(transactions)
+    return sum(t["amount"] for t in txns if t["type"] == "income")
 
 
 def total_expenses(transactions):
@@ -50,7 +92,8 @@ def total_expenses(transactions):
     Returns:
         The sum of amounts for transactions where `type == "expense"`.
     """
-    return sum(float(t["amount"]) for t in transactions if t["type"] == "expense")
+    txns, _ = _valid_transactions(transactions)
+    return sum(t["amount"] for t in txns if t["type"] == "expense")
 
 
 def net_savings(transactions):
@@ -62,7 +105,10 @@ def net_savings(transactions):
     Returns:
         Net savings value (total income - total expenses).
     """
-    return total_income(transactions) - total_expenses(transactions)
+    txns, _ = _valid_transactions(transactions)
+    inc = sum(t["amount"] for t in txns if t["type"] == "income")
+    exp = sum(t["amount"] for t in txns if t["type"] == "expense")
+    return inc - exp
 
 
 def net_value(transactions):
@@ -82,7 +128,6 @@ def net_value(transactions):
 
 # --- Transaction Listing and Removal ---
 # Functions to display transactions in a table and remove them by index.
-
 def list_transactions_print(transactions):
     """Print a tabular view of transactions with index for removal.
 
@@ -154,15 +199,18 @@ def report_income_vs_expenses():
     Side Effects:
         Prints a formatted report to stdout.
     """
-    txns = load_transactions()
-    inc = total_income(txns)
-    exp = total_expenses(txns)
+    txns_raw = load_transactions()
+    txns, skipped = _valid_transactions(txns_raw)
+    inc = sum(t["amount"] for t in txns if t["type"] == "income")
+    exp = sum(t["amount"] for t in txns if t["type"] == "expense")
     net = inc - exp
 
     print("\n--- Total Income vs. Total Expenses ---")
     print(f"Total Income : ${inc:,.2f}")
     print(f"Total Expense: ${exp:,.2f}")
     print(f"Net          : ${net:,.2f}")
+    if skipped:
+        print(f"(Note: skipped {skipped} invalid transaction(s))")
     if inc > 0:
         print(f"Expense / Income: {(exp / inc) * 100:,.2f}%")
     elif exp > 0:
@@ -181,32 +229,29 @@ def report_expenses_by_category():
     Side Effects:
         Prints a formatted report to stdout.
     """
-    from collections import defaultdict
-
-    txns = load_transactions()
+    txns_raw = load_transactions()
+    txns, skipped = _valid_transactions(txns_raw)
     by_cat = defaultdict(float)
-
     for t in txns:
-        if str(t.get("type", "")).lower() == "expense":
-            cat = (t.get("category") or "").strip() or "Uncategorized"
-            try:
-                amt = float(t.get("amount", 0))
-            except (TypeError, ValueError):
-                amt = 0.0
-            by_cat[cat] += amt
+        if t["type"] == "expense":
+            cat = t["category"] or "Uncategorized"
+            by_cat[cat] += t["amount"]
 
     print("\n--- Total Expenses by Category ---")
     if not by_cat:
         print("(no expenses found)")
+        if skipped:
+            print(f"(Note: skipped {skipped} invalid transaction(s))")
         return
 
-    # sorted largest first
     rows = sorted(by_cat.items(), key=lambda kv: kv[1], reverse=True)
     cat_width = max(12, min(28, max(len(k) for k, _ in rows)))
     print(f"{'Category'.ljust(cat_width)}  Total")
     print(f"{'-'*cat_width}  {'-'*12}")
     for cat, total in rows:
         print(f"{cat.ljust(cat_width)}  ${total:,.2f}")
+    if skipped:
+        print(f"(Note: skipped {skipped} invalid transaction(s))")
 
 
 def _ym(dstr):
@@ -220,26 +265,29 @@ def report_monthly_breakdown():
     Side Effects:
         Prints a formatted report to stdout.
     """
-    txns = load_transactions()
+    txns_raw = load_transactions()
+    txns, skipped = _valid_transactions(txns_raw)
     buckets = defaultdict(lambda: {"income": 0.0, "expense": 0.0})
     for t in txns:
         ym = _ym(t["date"])
-        amt = float(t["amount"])
-        if t["type"] == "income":
-            buckets[ym]["income"] += amt
-        elif t["type"] == "expense":
-            buckets[ym]["expense"] += amt
-    rows = sorted(buckets.items())  # by year-month
+        buckets[ym][t["type"]] += t["amount"]
+
+    rows = sorted(buckets.items())
     print("\n------ Monthly Breakdown (Income | Expense | Net) ------")
     if not rows:
         print("(no transactions)")
+        if skipped:
+            print(f"(Note: skipped {skipped} invalid transaction(s))")
         return
+
     print(" Month          Income           Expense          Net")
     print("---------------------------------------------------------")
     for ym, v in rows:
         net = v["income"] - v["expense"]
         print(
             f"{ym}  ${v['income']:>13,.2f}  ${v['expense']:>13,.2f}  ${net:>13,.2f}")
+    if skipped:
+        print(f"(Note: skipped {skipped} invalid transaction(s))")
 
 
 # --- CLI Menu ---
