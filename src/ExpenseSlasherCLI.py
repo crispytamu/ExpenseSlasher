@@ -262,11 +262,7 @@ def menu():
             while True:
                 date = input(
                     "Date (YYYY-MM-DD, blank=today): ").strip() or datetime.today().strftime("%Y-%m-%d")
-                if not date:
-                    date = datetime.today().strftime("%Y-%m-%d")
-                    break
                 try:
-                    # Validates format and real calendar date
                     parsed_date = datetime.strptime(date, "%Y-%m-%d")
                     date = parsed_date.strftime("%Y-%m-%d")  # normalize
                     break
@@ -274,15 +270,48 @@ def menu():
                     print(
                         "Invalid date format or date. Please use YYYY-MM-DD and real calendar date.")
 
-            description = input("Description: ").strip()
-            category = input("Category (e.g. food, rent, utilities): ").strip()
-            try:
-                # Will raise ValueError if not numeric
-                amount = float(input("Amount: ").strip())
-            except ValueError:
-                print("Amount must be numeric.")
-                continue
-            ttype = input("Type (income/expense): ").strip().lower()
+            # Description: cannot be blank
+            while True:
+                description = input("Description: ").strip()
+                if description:
+                    break
+                print("Description cannot be blank.")
+
+            # Category: cannot be blank; normalize 'food'/'Food' -> 'Food'
+            while True:
+                category = input(
+                    "Category (e.g. food, rent, utilities): ").strip()
+                if not category:
+                    print("Category cannot be blank.")
+                    continue
+                if category.lower() == "food":
+                    category = "Food"
+                break
+
+            # Amount: cannot be blank and must be numeric
+            while True:
+                raw_amount = input("Amount: ").strip()
+                if raw_amount == "":
+                    print("Amount cannot be blank.")
+                    continue
+                try:
+                    amount = float(raw_amount)
+                    break
+                except ValueError:
+                    print("Amount must be numeric.")
+
+            # Type: selection (1 = Income, 2 = Expense)
+            while True:
+                t_choice = input("Type (1 = Income, 2 = Expense): ").strip()
+                if t_choice == "1":
+                    ttype = "income"
+                    break
+                elif t_choice == "2":
+                    ttype = "expense"
+                    break
+                else:
+                    print("Invalid selection. Enter 1 for Income or 2 for Expense.")
+
             try:
                 add_transaction(date, description, category, amount, ttype)
                 print("Transaction added.")
