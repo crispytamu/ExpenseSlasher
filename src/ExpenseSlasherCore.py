@@ -26,6 +26,8 @@ from typing import List, Dict, Optional
 from datetime import datetime
 
 # Bootstrap imports to ensure local modules are found
+
+
 def _bootstrap_imports():
     """
     Ensure local modules (db_handler, ExpenseSlasherCLI) are discoverable by adding
@@ -34,6 +36,7 @@ def _bootstrap_imports():
     here = Path(__file__).resolve().parent
     if str(here) not in sys.path:
         sys.path.insert(0, str(here))
+
 
 _bootstrap_imports()
 
@@ -46,12 +49,13 @@ except ModuleNotFoundError as e:
 
 # Import ExpenseSlasherCLI as UI
 try:
-    import ExpenseSlasherCLI as cli  # must match your CLI filename
+    import ExpenseSlasherGUI as cli  # must match your CLI filename
 except ModuleNotFoundError as e:
     print("ERROR: Could not import ExpenseSlasherCLI. Ensure 'ExpenseSlasherCLI.py' is alongside this file.")
     raise e
 
 # --------------------------- Helpers ----------------------------
+
 
 def _today() -> str:
     """
@@ -61,6 +65,7 @@ def _today() -> str:
         str: Current date as a string in YYYY-MM-DD format.
     """
     return datetime.today().strftime("%Y-%m-%d")
+
 
 def _normalize_type(ttype: str) -> str:
     """
@@ -98,6 +103,7 @@ def _extract_category(tags: Optional[str]) -> Optional[str]:
             return t.split(":", 1)[1]
     return None
 
+
 def _make_tags(category: Optional[str]) -> list[str]:
     """
     Build a list of tags based on category.
@@ -112,7 +118,9 @@ def _make_tags(category: Optional[str]) -> list[str]:
 
 # ---------------- Core DB-backed API ----------------
 
-#Bridge between core and db_handler. Add a transaction to the DB
+# Bridge between core and db_handler. Add a transaction to the DB
+
+
 def add_transaction(date: str, description: str, category: str, amount, ttype: str):
     """
     Bridge to db_handler to add a transaction to the DB.
@@ -147,7 +155,9 @@ def add_transaction(date: str, description: str, category: str, amount, ttype: s
     if not ok:
         print("DB insert failed.")
 
-#fetch all transactions from DB and convert to list of dicts for CLI
+# fetch all transactions from DB and convert to list of dicts for CLI
+
+
 def load_transactions() -> List[Dict]:
     """
     Fetch all transactions from the DB and convert to a list of dictionaries.
@@ -175,7 +185,9 @@ def load_transactions() -> List[Dict]:
         })
     return out
 
-#Compute total income, expenses, net savings, net value from list of transactions
+# Compute total income, expenses, net savings, net value from list of transactions
+
+
 def total_income(transactions: List[Dict]) -> float:
     """
     Calculate the total income from a list of transactions.
@@ -188,6 +200,7 @@ def total_income(transactions: List[Dict]) -> float:
     """
     return sum(float(t["amount"]) for t in transactions if t["type"] == "income")
 
+
 def total_expenses(transactions: List[Dict]) -> float:
     """
     Calculate the total expenses from a list of transactions.
@@ -199,6 +212,7 @@ def total_expenses(transactions: List[Dict]) -> float:
         float: Sum of all expense transaction amounts.
     """
     return sum(float(t["amount"]) for t in transactions if t["type"] == "expense")
+
 
 def net_savings(transactions: List[Dict]) -> float:
     """
@@ -214,6 +228,7 @@ def net_savings(transactions: List[Dict]) -> float:
     """
     return total_income(transactions) - total_expenses(transactions)
 
+
 def net_value(transactions: List[Dict]) -> float:
     """
     Calculate the net financial value from a list of transactions.
@@ -227,6 +242,7 @@ def net_value(transactions: List[Dict]) -> float:
         float: Net financial value.
     """
     return net_savings(transactions)
+
 
 def remove_transaction_by_index(index: int):
     """
@@ -264,7 +280,7 @@ def remove_transaction_by_index(index: int):
 
 
 # ---------------- Bind Core into CLI ----------------
-#This overwrites CLI CSV based functions with CORE DB functions
+# This overwrites CLI CSV based functions with CORE DB functions
 cli.add_transaction = add_transaction
 cli.load_transactions = load_transactions
 cli.total_income = total_income
@@ -275,6 +291,7 @@ cli.remove_transaction_by_index = remove_transaction_by_index
 
 # ---------------- Runner ----------------
 
+
 def main():
     """
     Main entry point for the Expense Slasher Core Runner.
@@ -284,6 +301,7 @@ def main():
     print("=== Expense Slasher (Core Runner) ===")
     print("Using db_handler for persistence. Launching CLI...\n")
     cli.menu()
+
 
 if __name__ == "__main__":
     main()
