@@ -1,3 +1,10 @@
+# PROGRAM: Expense Slasher GUI Runner
+# PURPOSE: This module launches the Tkinter-based Expense Slasher application and renders reports with Matplotlib.
+# INPUT: User interactions via the GUI (form fields, table selection, menus, and keyboard shortcuts).
+# PROCESS: Add, view, and delete transactions; compute totals; generate Income vs Expenses, Category, and Monthly reports with charts.
+# OUTPUT: On-screen tables, labels, and embedded bar charts within Tkinter windows.
+# HONOR CODE: On my honor, as an Aggie, I have neither given nor received unauthorized aid on this academic work.
+
 #!/usr/bin/env python3
 """
 Expense Slasher - Tkinter GUI layer
@@ -16,6 +23,7 @@ Expected to be overwritten by the Core after import:
 - net_value(transactions) -> float
 """
 
+
 from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -25,29 +33,111 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
 
-# ---- New: Matplotlib embedding ----
-
 # ---- Placeholders (Core overwrites these after import) ----
 
+def add_transaction(date: str, description: str, category: str, amount, ttype: str):
+    """Persist a single transaction.
 
-def add_transaction(date: str, description: str,
-                    category: str, amount, ttype: str): ...
+    Parameters
+    ----------
+    date : str
+        ISO date string in ``YYYY-MM-DD`` format.
+    description : str
+        Short label for the transaction.
+    category : str
+        Classification (e.g., "Groceries", "Rent", "Salary").
+    amount : Any
+        Numeric value; the Core should coerce/validate to ``float``.
+    ttype : str
+        Either ``"income"`` or ``"expense"``.
+
+    Notes
+    -----
+    This function is expected to be **overwritten by the Core** after import.
+    The default placeholder does nothing.
+    """
+    ...
 
 
-def load_transactions() -> List[Dict]: return []
-def remove_transaction_by_index(index: int): return False, 0
-def total_income(transactions: List[Dict]) -> float: return 0.0
-def total_expenses(transactions: List[Dict]) -> float: return 0.0
-def net_savings(transactions: List[Dict]) -> float: return 0.0
-def net_value(transactions: List[Dict]) -> float: return 0.0
+def load_transactions() -> List[Dict]:
+    """Return a list of transaction dictionaries.
+
+    Each transaction dict should contain: ``date``, ``description``,
+    ``category``, ``amount``, and ``type`` ("income"|"expense").
+
+    Returns
+    -------
+    List[Dict]
+        A list of transactions. Placeholder returns an empty list.
+    """
+    return []
+
+
+def remove_transaction_by_index(index: int):
+    """Remove a transaction by its 0‑based index.
+
+    Parameters
+    ----------
+    index : int
+        Index in the current transaction list/order.
+
+    Returns
+    -------
+    Tuple[bool, Any]
+        ``(True, info)`` on success where ``info`` may describe the item removed;
+        ``(False, total)`` on failure where ``total`` is the valid item count.
+
+    Notes
+    -----
+    This is a Core‑overridden function; the placeholder returns ``(False, 0)``.
+    """
+    return False, 0
+
+
+def total_income(transactions: List[Dict]) -> float:
+    """Compute the sum of amounts for transactions with type ``income``.
+
+    Placeholder returns ``0.0`` when Core is not connected.
+    """
+    return 0.0
+
+
+def total_expenses(transactions: List[Dict]) -> float:
+    """Compute the sum of amounts for transactions with type ``expense``.
+
+    Placeholder returns ``0.0`` when Core is not connected.
+    """
+    return 0.0
+
+
+def net_savings(transactions: List[Dict]) -> float:
+    """Compute savings metric if provided by Core (not used directly here).
+
+    Placeholder returns ``0.0``.
+    """
+    return 0.0
+
+
+def net_value(transactions: List[Dict]) -> float:
+    """Compute net value metric if provided by Core (not used directly here).
+
+    Placeholder returns ``0.0``.
+    """
+    return 0.0
 # -----------------------------------------------------------
 
 
 def _today() -> str:
+    """Return today's date as ``YYYY-MM-DD`` string."""
     return datetime.today().strftime("%Y-%m-%d")
 
 
 def _validate_date(d: str) -> str:
+    """Normalize and validate a date string.
+
+    If ``d`` is empty or whitespace, today's date is returned. Otherwise the
+    value must parse as ``YYYY-MM-DD`` or a :class:`ValueError` is raised.
+    """
     d = (d or "").strip()
     if not d:
         return _today()
@@ -58,6 +148,13 @@ def _validate_date(d: str) -> str:
 
 
 def _parse_amount(s: str) -> float:
+    """Convert a string to ``float`` or raise a user‑friendly error.
+
+    Parameters
+    ----------
+    s : str
+        The input amount text (commas/letters are invalid).
+    """
     try:
         return float(s)
     except Exception:
@@ -65,12 +162,22 @@ def _parse_amount(s: str) -> float:
 
 
 def _ym(dstr: str) -> str:
-    # YYYY-MM from YYYY-MM-DD
+    """Return ``YYYY-MM`` month key from a ``YYYY-MM-DD`` date string."""
     return datetime.strptime(dstr, "%Y-%m-%d").strftime("%Y-%m")
 
 
 class ExpenseSlasherGUI(tk.Tk):
+    """Main application window for Expense Slasher.
+
+    Responsibilities
+    ----------------
+    - Build the Tkinter UI (form, table, totals, and report buttons)
+    - Dispatch add/remove actions
+    - Open report windows that render tables and Matplotlib bar charts
+    """
+
     def __init__(self):
+        """Initialize and lay out the main window, then load initial data."""
         super().__init__()
         self.title("Expense Slasher")
         self.geometry("1000x740")
@@ -87,6 +194,7 @@ class ExpenseSlasherGUI(tk.Tk):
 
     # ---------- Menubar ----------
     def _build_menubar(self):
+        """Create the top menubar with File and Reports menus."""
         menubar = tk.Menu(self)
         # File menu (future use)
         file_menu = tk.Menu(menubar, tearoff=0)
@@ -107,6 +215,7 @@ class ExpenseSlasherGUI(tk.Tk):
 
     # ---------- Main UI ----------
     def _build_ui(self):
+        """Build the form inputs, table, action buttons, totals, and report shortcuts."""
         frm = ttk.LabelFrame(self, text="Add Transaction")
         frm.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
 
@@ -204,6 +313,7 @@ class ExpenseSlasherGUI(tk.Tk):
 
     # ---------- Actions ----------
     def _on_add(self):
+        """Validate form inputs, persist the transaction, and refresh the UI."""
         try:
             date = _validate_date(self.var_date.get())
             desc = (self.var_desc.get() or "").strip()
@@ -223,6 +333,7 @@ class ExpenseSlasherGUI(tk.Tk):
             messagebox.showerror("Error", f"Could not add transaction:\n{e}")
 
     def _clear_inputs(self):
+        """Reset the form fields to their defaults after a successful add."""
         self.var_date.set(_today())
         self.var_desc.set("")
         self.var_cat.set("")
@@ -230,6 +341,11 @@ class ExpenseSlasherGUI(tk.Tk):
         self.var_type.set("expense")
 
     def _on_delete(self):
+        """Remove the currently selected row from the table and storage.
+
+        Shows a friendly message when nothing is selected or when the index is
+        out of range.
+        """
         sel = self.tree.selection()
         if not sel:
             messagebox.showinfo("Remove", "Select a row to remove.")
@@ -247,6 +363,7 @@ class ExpenseSlasherGUI(tk.Tk):
 
     # ---------- Data/Display ----------
     def _refresh_table(self):
+        """Reload the transactions from storage and repopulate the table."""
         for i in self.tree.get_children():
             self.tree.delete(i)
         txns = load_transactions()
@@ -261,6 +378,7 @@ class ExpenseSlasherGUI(tk.Tk):
             ))
 
     def _update_totals(self):
+        """Recalculate and display Income, Expenses, and Net totals."""
         txns = load_transactions()
         inc = total_income(txns)
         exp = total_expenses(txns)
@@ -271,8 +389,25 @@ class ExpenseSlasherGUI(tk.Tk):
 
     # ---------- Helpers (Matplotlib) ----------
     def _draw_bar_chart(self, parent: tk.Widget, xlabels: list[str], series: dict[str, list[float]], title: str, ylabel: str = ""):
-        """Draw a grouped bar chart embedded in `parent`.
-        series: mapping of legend label -> list of values aligned to xlabels.
+        """Embed a grouped bar chart inside a Tk widget.
+
+        Parameters
+        ----------
+        parent : tk.Widget
+            The container where the Matplotlib canvas will be packed.
+        xlabels : list[str]
+            Labels for the x‑axis (e.g., months or category names).
+        series : dict[str, list[float]]
+            Mapping from legend label to values aligned to ``xlabels``.
+        title : str
+            Title displayed above the axes.
+        ylabel : str, optional
+            Y‑axis label, by default "".
+
+        Notes
+        -----
+        Bars are slightly offset to show multiple series side‑by‑side per label.
+        If no data is provided, a friendly "no data" label is shown instead.
         """
         fig = Figure(figsize=(6.8, 3.4), dpi=100)
         ax = fig.add_subplot(111)
@@ -307,6 +442,7 @@ class ExpenseSlasherGUI(tk.Tk):
 
     # ---------- Reports ----------
     def _open_report_income_vs_expenses(self):
+        """Open a window with overall Income vs. Expense totals and a bar chart."""
         txns = load_transactions()
         inc = total_income(txns)
         exp = total_expenses(txns)
@@ -353,6 +489,7 @@ class ExpenseSlasherGUI(tk.Tk):
         ), self._open_report_income_vs_expenses())).pack(anchor="e", pady=(12, 0))
 
     def _open_report_expenses_by_category(self):
+        """Open a window listing expense totals by category plus a bar chart."""
         from collections import defaultdict
         txns = load_transactions()
         by_cat = defaultdict(float)
@@ -424,6 +561,7 @@ class ExpenseSlasherGUI(tk.Tk):
             messagebox.showinfo("Expenses by Category", "(no expenses found)")
 
     def _open_report_monthly_breakdown(self):
+        """Open a window with month buckets and a grouped monthly bar chart."""
         from collections import defaultdict
         txns = load_transactions()
         buckets = defaultdict(lambda: {"income": 0.0, "expense": 0.0})
@@ -508,5 +646,6 @@ class ExpenseSlasherGUI(tk.Tk):
 
 
 def menu():
+    """Launch the Expense Slasher GUI application."""
     app = ExpenseSlasherGUI()
     app.mainloop()
